@@ -27,3 +27,17 @@ export const INCOMING_STEPS = ["DICATAT","DIVERIFIKASI","MENUNGGU_DISPOSISI","DI
 export const OUTGOING_STEPS = ["DRAFT","DIAJUKAN","DITINJAU","DISETUJUI","FINAL","DIKIRIM","DIARSIPKAN"];
 
 export const PAGE_SIZE = 15;
+
+export const AUDIT_LABEL: Record<string, string> = {
+  INCOMING_LETTER_CREATE: "Surat masuk dicatat", INCOMING_LETTER_UPDATE: "Data surat masuk diubah", INCOMING_STATUS: "Status surat masuk diperbarui",
+  OUTGOING_LETTER_CREATE: "Draft surat keluar dibuat", OUTGOING_LETTER_UPDATE: "Draft surat keluar diubah",
+  OUTGOING_SUBMIT: "Surat keluar diajukan", OUTGOING_REVIEW: "Surat keluar ditinjau", OUTGOING_REQUEST_REVISION: "Revisi surat diminta",
+  OUTGOING_APPROVE: "Surat keluar disetujui", OUTGOING_FINALIZE: "Surat difinalkan", NUMBER_ALLOCATE: "Nomor surat diterbitkan",
+  OUTGOING_SEND: "Surat keluar dikirim", OUTGOING_NEW_VERSION: "Versi baru surat dibuat",
+  DISPOSITION_CREATE: "Disposisi dibuat", DISPOSITION_STATUS: "Disposisi diperbarui", ARCHIVE: "Surat diarsipkan", LETTER_DELETE: "Surat dihapus",
+  USER_UPDATE: "Pengguna diperbarui", USER_DELETE: "Pengguna dihapus", USER_INVITE_RESEND: "Undangan dikirim ulang",
+  SCHOOL_SETTINGS_UPDATE: "Pengaturan sekolah diubah", LETTER_TEMPLATE_CREATE: "Template dibuat", LETTER_TEMPLATE_UPDATE: "Template diubah",
+  LETTER_CATEGORY_CREATE: "Kategori ditambahkan", LETTER_CATEGORY_UPDATE: "Kategori diubah", ATTACHMENT_CREATE: "Lampiran diunggah",
+  AUTH_LOGIN: "Login", AUTH_LOGIN_GOOGLE: "Login Google", AUTH_LOGOUT: "Logout", FILE_DOWNLOAD: "Berkas diunduh",
+};
+export const auditLabel = (a: string) => AUDIT_LABEL[a] ?? a.replaceAll("_", " ").toLowerCase();

@@ -13,15 +13,28 @@ export async function inviteUser(formData: FormData) {
   const parsed = inviteSchema.safeParse({ email: formData.get("email"), full_name: formData.get("full_name"), role: formData.get("role") });
   if (!parsed.success) go("/pengguna", "error", zodFlat(parsed.error));
   const d = parsed.data!;
+  const mode = String(formData.get("mode")) === "google" ? "google" : "email";
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(d.email, { data: { full_name: d.full_name }, redirectTo: `${base}/auth/callback?next=/atur-password` });
-  if (error || !data.user) go("/pengguna", "error", "Undangan gagal dikirim. Periksa alamat email atau konfigurasi email Supabase.");
+
+  let userId: string;
+  if (mode === "email") {
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(d.email, { data: { full_name: d.full_name }, redirectTo: `${base}/auth/confirm` });
+    if (error || !data.user) go("/pengguna", "error", "Undangan gagal dikirim. Email mungkin sudah terdaftar, atau konfigurasi email Supabase belum benar.");
+    userId = data!.user.id;
+  } else {
+    // Daftar tanpa kirim email: untuk pengguna yang masuk lewat Google. Email dianggap terverifikasi oleh admin.
+    const { data, error } = await admin.auth.admin.createUser({ email: d.email, email_confirm: true, user_metadata: { full_name: d.full_name } });
+    if (error || !data.user) go("/pengguna", "error", "Pendaftaran gagal. Email mungkin sudah terdaftar.");
+    userId = data!.user.id;
+  }
   // Role ditetapkan melalui RPC ber-audit (bukan dari metadata yang dapat dimanipulasi pengguna)
-  const { error: e2 } = await createClient().rpc("admin_set_user", { p_user: data!.user.id, p_full_name: d.full_name, p_role: d.role, p_active: true });
+  const { error: e2 } = await createClient().rpc("admin_set_user", { p_user: userId, p_full_name: d.full_name, p_role: d.role, p_active: true });
   if (e2) go("/pengguna", "error", `Akun dibuat tetapi role belum diatur: ${friendlyError(e2)}`);
   revalidatePath("/pengguna");
-  go("/pengguna", "ok", "Undangan terkirim. Pengguna membuat kata sandi lewat email.");
+  go("/pengguna", "ok", mode === "email"
+    ? "Undangan terkirim. Pengguna membuat kata sandi lewat email, atau boleh langsung masuk dengan Google."
+    : "Pengguna didaftarkan. Minta pengguna memilih Masuk dengan Google memakai email yang sama.");
 }
 
 export async function updateUser(formData: FormData) {
@@ -77,4 +90,71 @@ export async function saveTemplate(formData: FormData) {
   if (error) go("/pengaturan", "error", friendlyError(error));
   revalidatePath("/pengaturan");
   go("/pengaturan", "ok", "Template disimpan");
+}
+
+/** Kirim ulang undangan. Pengguna yang belum pernah menerima/menerima undangan: undangan baru.
+ *  Pengguna yang sudah terverifikasi (sudah masuk, atau didaftarkan tanpa email): tautan buat/atur ulang kata sandi. */
+export async function resendInvite(formData: FormData) {
+  const s = await requirePermission("users.manage");
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) go("/pengguna", "error", "ID pengguna tidak valid");
+  if (id === s.userId) go("/pengguna", "error", "Untuk akun Anda sendiri, gunakan Lupa kata sandi di halaman masuk");
+
+  const sb = createClient();
+  const { data: prof } = await sb.from("profiles").select("is_active").eq("id", id).maybeSingle();
+  if (!prof) go("/pengguna", "error", "Pengguna tidak ditemukan");
+  if (!prof!.is_active) go("/pengguna", "error", "Aktifkan pengguna terlebih dahulu sebelum mengirim undangan");
+
+  const admin = createAdminClient();
+  const { data: u, error } = await admin.auth.admin.getUserById(id);
+  const email = u?.user?.email;
+  if (error || !email || !u?.user) go("/pengguna", "error", "Email pengguna tidak ditemukan");
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const redirectTo = `${base}/auth/confirm`;
+
+  const neverAccepted = !u!.user.last_sign_in_at && !u!.user.email_confirmed_at;
+  let kind: "invite" | "reset" = "reset";
+  if (neverAccepted) {
+    const { error: e } = await admin.auth.admin.inviteUserByEmail(email!, { redirectTo });
+    if (!e) kind = "invite";
+  }
+  if (kind === "reset") {
+    const { error: e } = await admin.auth.resetPasswordForEmail(email!, { redirectTo });
+    if (e) go("/pengguna", "error", "Email gagal dikirim. Periksa batas pengiriman email dan konfigurasi SMTP Brevo di Supabase.");
+  }
+  await sb.rpc("log_admin_event", { p_action: "USER_INVITE_RESEND", p_target: id, p_meta: { email } });
+  go("/pengguna", "ok", kind === "invite"
+    ? `Undangan dikirim ulang ke ${email}.`
+    : `Pengguna ini sudah terverifikasi, jadi dikirim tautan membuat/mengatur ulang kata sandi ke ${email}. Pengguna juga dapat langsung memakai Masuk dengan Google.`);
+}
+
+/** Hapus permanen akun pengguna. Hanya untuk akun TANPA riwayat; selain itu gunakan Nonaktifkan. */
+export async function deleteUser(formData: FormData) {
+  const s = await requirePermission("users.manage");
+  const id = String(formData.get("id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) go("/pengguna", "error", "ID pengguna tidak valid");
+  if (id === s.userId) go("/pengguna", "error", "Anda tidak dapat menghapus akun Anda sendiri");
+  if (String(formData.get("confirm") ?? "").trim() !== "HAPUS") go("/pengguna", "error", "Penghapusan dibatalkan: ketik HAPUS (huruf besar) untuk konfirmasi");
+
+  const sb = createClient();
+  const { data: prof } = await sb.from("profiles").select("full_name, role_code, is_active").eq("id", id).maybeSingle();
+  if (!prof) go("/pengguna", "error", "Pengguna tidak ditemukan");
+
+  if (prof!.role_code === "SUPER_ADMIN") {
+    const { count } = await sb.from("profiles").select("id", { count: "exact", head: true }).eq("role_code", "SUPER_ADMIN").eq("is_active", true).neq("id", id);
+    if (!count) go("/pengguna", "error", "Tidak dapat menghapus Super Admin aktif terakhir");
+  }
+
+  const { data: hasRecords, error: e0 } = await sb.rpc("user_has_records", { p_user: id });
+  if (e0) go("/pengguna", "error", friendlyError(e0));
+  if (hasRecords) go("/pengguna", "error", "Akun ini memiliki riwayat (surat, disposisi, persetujuan, atau lampiran) sehingga tidak dapat dihapus agar jejak audit tetap utuh. Gunakan Nonaktifkan.");
+
+  const admin = createAdminClient();
+  const { data: u } = await admin.auth.admin.getUserById(id);
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) go("/pengguna", "error", "Penghapusan gagal. Akun mungkin masih memiliki data terkait; gunakan Nonaktifkan.");
+
+  await sb.rpc("log_admin_event", { p_action: "USER_DELETE", p_target: id, p_meta: { email: u?.user?.email ?? null, name: prof!.full_name, role: prof!.role_code } });
+  revalidatePath("/pengguna");
+  go("/pengguna", "ok", `Akun ${prof!.full_name || u?.user?.email || "pengguna"} dihapus permanen.`);
 }

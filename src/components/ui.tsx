@@ -49,7 +49,7 @@ export function Field({ label, htmlFor, hint, required, children }: { label: str
 
 export function Card({ children, className, title, action }: { children: React.ReactNode; className?: string; title?: string; action?: React.ReactNode }) {
   return (
-    <section className={cn("rounded-lg border border-line bg-surface-card", className)}>
+    <section className={cn("rounded-xl border border-line bg-surface-card shadow-card", className)}>
       {(title || action) && (
         <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
           {title && <h2 className="text-sm font-semibold text-ink">{title}</h2>}
@@ -78,7 +78,7 @@ export function PageHeader({ title, description, action, crumbs }: { title: stri
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-semibold text-navy-900">{title}</h1>
+          <h1 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-navy-900">{title}</h1>
           {description && <p className="mt-1 max-w-2xl text-sm text-ink-soft">{description}</p>}
         </div>
         {action && <div className="flex flex-wrap gap-2">{action}</div>}
@@ -134,7 +134,7 @@ export function PermissionDenied() {
 
 export function StatCard({ label, value, hint, href, tone }: { label: string; value: number | string; hint?: string; href?: string; tone?: Tone }) {
   const inner = (
-    <div className="h-full rounded-lg border border-line bg-surface-card p-4 transition-colors hover:border-line-strong">
+    <div className="h-full rounded-xl border border-line bg-surface-card p-4 shadow-card transition-colors hover:border-line-strong">
       <p className="text-xs text-ink-soft">{label}</p>
       <p className={cn("mt-1 text-2xl font-semibold tabular-nums", tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "text-navy-900")}>{value}</p>
       {hint && <p className="mt-1 text-xs text-ink-mute">{hint}</p>}

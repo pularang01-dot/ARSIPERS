@@ -43,3 +43,8 @@ export function safeNext(n: string | null | undefined): string {
 export function firstParam(v: string | string[] | undefined): string {
   return Array.isArray(v) ? v[0] ?? "" : v ?? "";
 }
+
+/** Tanggal hari ini (YYYY-MM-DD) menurut zona waktu Asia/Jakarta. */
+export function todayJakarta(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}

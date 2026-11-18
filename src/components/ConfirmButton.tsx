@@ -3,8 +3,10 @@ import { useId, useRef } from "react";
 import { buttonClass } from "@/components/ui";
 
 /** Tombol dengan dialog konfirmasi (native <dialog>: fokus dan Esc ditangani browser). */
-export function ConfirmButton({ label, title, message, confirmLabel, variant = "danger", children }: {
+export function ConfirmButton({ label, title, message, confirmLabel, variant = "danger", children, formAction }: {
   label: string; title: string; message: string; confirmLabel: string; variant?: "primary" | "danger"; children?: React.ReactNode;
+  /** Server action khusus untuk tombol konfirmasi (menggantikan action form induk). */
+  formAction?: (formData: FormData) => void | Promise<void>;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const uid = useId();
@@ -18,7 +20,7 @@ export function ConfirmButton({ label, title, message, confirmLabel, variant = "
           {children}
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className={buttonClass("secondary")} onClick={() => ref.current?.close()}>Batal</button>
-            <button type="submit" className={buttonClass(variant)}>{confirmLabel}</button>
+            <button type="submit" formAction={formAction} formNoValidate={!!formAction} className={buttonClass(variant)}>{confirmLabel}</button>
           </div>
         </div>
       </dialog>
