@@ -35,11 +35,11 @@ export function SubmitButton({ children, variant = "primary", className, name, v
 
 export const inputClass = "block w-full min-h-[40px] rounded-md border border-line-strong bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-mute focus-visible:outline focus-visible:outline-2 focus-visible:outline-navy-600 disabled:bg-surface";
 
-export function Field({ label, htmlFor, hint, required, children }: { label: string; htmlFor: string; hint?: string; required?: boolean; children: React.ReactNode }) {
+export function Field({ label, htmlFor, hint, required, optional, children }: { label: string; htmlFor: string; hint?: string; required?: boolean; optional?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <label htmlFor={htmlFor} className="block text-sm font-medium text-ink">
-        {label}{required && <span className="text-bad" aria-hidden> *</span>}
+        {label}{required && <span className="text-bad" aria-hidden> *</span>}{optional && <span className="ml-1.5 text-xs font-normal text-ink-mute">(opsional)</span>}
       </label>
       {children}
       {hint && <p className="text-xs text-ink-mute">{hint}</p>}

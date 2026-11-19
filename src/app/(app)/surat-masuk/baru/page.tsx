@@ -13,7 +13,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
   const cats = await getCategories(createClient(), "incoming");
   return (
     <>
-      <PageHeader title="Catat surat masuk" crumbs={[{ label: "Surat masuk", href: "/surat-masuk" }, { label: "Catat baru" }]} />
+      <PageHeader title="Catat surat masuk" description="Isi data berikut. Kolom bertanda * wajib diisi." crumbs={[{ label: "Surat masuk", href: "/surat-masuk" }, { label: "Catat baru" }]} />
       <Flash error={firstParam(searchParams.error)} />
       <Card><IncomingForm action={createIncoming} categories={cats} cancelHref="/surat-masuk" withFile /></Card>
     </>

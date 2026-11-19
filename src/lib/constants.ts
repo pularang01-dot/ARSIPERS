@@ -34,10 +34,15 @@ export const AUDIT_LABEL: Record<string, string> = {
   OUTGOING_SUBMIT: "Surat keluar diajukan", OUTGOING_REVIEW: "Surat keluar ditinjau", OUTGOING_REQUEST_REVISION: "Revisi surat diminta",
   OUTGOING_APPROVE: "Surat keluar disetujui", OUTGOING_FINALIZE: "Surat difinalkan", NUMBER_ALLOCATE: "Nomor surat diterbitkan",
   OUTGOING_SEND: "Surat keluar dikirim", OUTGOING_NEW_VERSION: "Versi baru surat dibuat",
-  DISPOSITION_CREATE: "Disposisi dibuat", DISPOSITION_STATUS: "Disposisi diperbarui", ARCHIVE: "Surat diarsipkan", LETTER_DELETE: "Surat dihapus",
+  DISPOSITION_CREATE: "Disposisi dibuat", DISPOSITION_STATUS: "Disposisi diperbarui", ARCHIVE: "Surat diarsipkan", UNARCHIVE: "Pengarsipan dibatalkan", ARCHIVE_DELETE: "Arsip dihapus", LETTER_DELETE: "Surat dihapus",
   USER_UPDATE: "Pengguna diperbarui", USER_DELETE: "Pengguna dihapus", USER_INVITE_RESEND: "Undangan dikirim ulang",
   SCHOOL_SETTINGS_UPDATE: "Pengaturan sekolah diubah", LETTER_TEMPLATE_CREATE: "Template dibuat", LETTER_TEMPLATE_UPDATE: "Template diubah",
   LETTER_CATEGORY_CREATE: "Kategori ditambahkan", LETTER_CATEGORY_UPDATE: "Kategori diubah", ATTACHMENT_CREATE: "Lampiran diunggah",
   AUTH_LOGIN: "Login", AUTH_LOGIN_GOOGLE: "Login Google", AUTH_LOGOUT: "Logout", FILE_DOWNLOAD: "Berkas diunduh",
 };
 export const auditLabel = (a: string) => AUDIT_LABEL[a] ?? a.replaceAll("_", " ").toLowerCase();
+
+export const DISPOSITION_STEPS = ["MENUNGGU", "DITERIMA", "DALAM_PROSES", "SELESAI"];
+export const NATURE_HINT: Record<string, string> = {
+  BIASA: "Surat rutin", PENTING: "Perlu perhatian", SEGERA: "Perlu tindakan cepat", RAHASIA: "Akses terbatas",
+};

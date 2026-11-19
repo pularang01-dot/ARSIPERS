@@ -2,7 +2,7 @@ export const PERMISSIONS = [
   "letters.incoming.view", "letters.incoming.create", "letters.incoming.update", "letters.incoming.delete",
   "letters.outgoing.view", "letters.outgoing.create", "letters.outgoing.update", "letters.outgoing.submit", "letters.outgoing.approve",
   "letters.disposition.create", "letters.disposition.respond",
-  "archives.view", "archives.manage", "reports.view", "users.manage", "settings.manage", "audit_logs.view",
+  "archives.view", "archives.manage", "archives.delete", "reports.view", "users.manage", "settings.manage", "audit_logs.view",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

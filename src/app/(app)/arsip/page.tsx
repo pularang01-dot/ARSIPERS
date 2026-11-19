@@ -1,15 +1,20 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { deleteArchived, unarchiveLetter } from "@/features/archive-actions";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileMap } from "@/lib/data";
-import { Card, EmptyState, ErrorState, inputClass, PageHeader, Pagination, SubmitButton, tableClass, buttonClass } from "@/components/ui";
+import { Card, EmptyState, ErrorState, Field, Flash, inputClass, PageHeader, Pagination, SubmitButton, tableClass, buttonClass } from "@/components/ui";
 import { firstParam, formatDate, sanitizeSearch } from "@/lib/utils";
 import { PAGE_SIZE } from "@/lib/constants";
 
 export const metadata = { title: "Arsip" };
 
 export default async function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  await requirePermission("archives.view");
+  const sess = await requirePermission("archives.view");
+  const canManage = can(sess.permissions, "archives.manage");
+  const canDelete = can(sess.permissions, "archives.delete");
   const sb = createClient();
   const jenis = firstParam(searchParams.jenis);
   const q = sanitizeSearch(firstParam(searchParams.q));
@@ -28,6 +33,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
   return (
     <>
       <PageHeader title="Arsip digital" description="Surat masuk dan keluar yang sudah diarsipkan. Pencarian teks berlaku pada halaman yang sedang tampil." />
+      <Flash ok={firstParam(searchParams.ok)} error={firstParam(searchParams.error)} />
       <Card>
         <form className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]" role="search">
           <div><label htmlFor="q" className="sr-only">Cari</label><input id="q" name="q" defaultValue={q} placeholder="Cari perihal, pihak, nomor" className={inputClass} /></div>
@@ -40,13 +46,33 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
           <>
             <div className={tableClass.wrap}><table className={tableClass.table}>
               <caption className="sr-only">Daftar arsip</caption>
-              <thead><tr><th scope="col" className={tableClass.th}>Jenis</th><th scope="col" className={tableClass.th}>Perihal</th><th scope="col" className={tableClass.th}>Pihak</th><th scope="col" className={tableClass.th}>Nomor</th><th scope="col" className={tableClass.th}>Diarsipkan</th></tr></thead>
+              <thead><tr><th scope="col" className={tableClass.th}>Jenis</th><th scope="col" className={tableClass.th}>Perihal</th><th scope="col" className={tableClass.th}>Pihak</th><th scope="col" className={tableClass.th}>Nomor</th><th scope="col" className={tableClass.th}>Diarsipkan</th>{(canManage || canDelete) && <th scope="col" className={tableClass.th}><span className="sr-only">Tindakan</span></th>}</tr></thead>
               <tbody>{rows.map((r) => {
                 const inc = r.incoming; const out = r.outgoing;
                 return (<tr key={r.id} className="hover:bg-surface"><td className={tableClass.td}>{inc ? "Masuk" : "Keluar"}</td>
                   <td className={tableClass.td}><Link className="font-medium text-navy-800 hover:underline" href={inc ? `/surat-masuk/${inc.id}` : `/surat-keluar/${out?.id}`}>{inc?.subject ?? out?.subject}</Link>{r.retention_note && <p className="mt-0.5 text-xs text-ink-mute">{r.retention_note}</p>}</td>
                   <td className={tableClass.td}>{inc?.sender ?? out?.recipient}</td><td className={tableClass.td + " tabular-nums"}>{inc?.external_number ?? out?.number ?? "-"}</td>
-                  <td className={tableClass.td + " whitespace-nowrap"}>{formatDate(r.archived_at)}<p className="text-xs text-ink-mute">{names[r.archived_by]}</p></td></tr>);
+                  <td className={tableClass.td + " whitespace-nowrap"}>{formatDate(r.archived_at)}<p className="text-xs text-ink-mute">{names[r.archived_by]}</p></td>
+                  {(canManage || canDelete) && (
+                    <td className={tableClass.td}>
+                      <form action={unarchiveLetter} className="flex flex-wrap gap-2">
+                        <input type="hidden" name="kind" value={inc ? "incoming" : "outgoing"} /><input type="hidden" name="id" value={inc ? inc.id : out?.id} />
+                        {canManage && (
+                          <ConfirmButton label="Batalkan arsip" title="Batalkan pengarsipan?" confirmLabel="Batalkan arsip"
+                            message={`Surat dikembalikan ke status ${inc ? "Selesai" : "Dikirim"} dan keluar dari arsip. Tindakan ini tercatat di audit log.`}>
+                            <Field label="Alasan pembatalan" htmlFor={`ua-${r.id}`} required><input id={`ua-${r.id}`} name="reason" required minLength={5} className={inputClass} placeholder="mis. salah memilih surat" /></Field>
+                          </ConfirmButton>
+                        )}
+                        {canDelete && (
+                          <ConfirmButton label="Hapus arsip" title="Hapus surat arsip ini?" confirmLabel="Hapus arsip" formAction={deleteArchived}
+                            message="Surat disembunyikan dari semua daftar dan tidak dapat dipulihkan lewat aplikasi. Berkas lampiran tidak ikut dihapus dari penyimpanan. Tercatat di audit log. Jika hanya salah mengarsipkan, gunakan Batalkan arsip.">
+                            <Field label="Ketik HAPUS untuk konfirmasi" htmlFor={`dc-${r.id}`}><input id={`dc-${r.id}`} name="confirm" autoComplete="off" className={inputClass} /></Field>
+                            <Field label="Alasan penghapusan" htmlFor={`dr-${r.id}`}><input id={`dr-${r.id}`} name="delete_reason" className={inputClass} placeholder="mis. surat dicatat dua kali" /></Field>
+                          </ConfirmButton>
+                        )}
+                      </form>
+                    </td>
+                  )}</tr>);
               })}</tbody>
             </table></div>
             <Pagination page={page} total={count ?? 0} pageSize={PAGE_SIZE} basePath="/arsip" params={params} />

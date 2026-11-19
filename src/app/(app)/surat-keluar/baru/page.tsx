@@ -14,7 +14,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
   const [cats, { data: tpl }] = await Promise.all([getCategories(sb, "outgoing"), sb.from("letter_templates").select("id, name").eq("is_active", true).order("name")]);
   return (
     <>
-      <PageHeader title="Buat surat keluar" crumbs={[{ label: "Surat keluar", href: "/surat-keluar" }, { label: "Buat baru" }]} />
+      <PageHeader title="Buat surat keluar" description="Isi data berikut. Kolom bertanda * wajib diisi." crumbs={[{ label: "Surat keluar", href: "/surat-keluar" }, { label: "Buat baru" }]} />
       <Flash error={firstParam(searchParams.error)} />
       <Card><OutgoingForm action={createOutgoing} categories={cats} templates={tpl ?? []} cancelHref="/surat-keluar" isNew /></Card>
     </>
