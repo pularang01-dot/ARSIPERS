@@ -1,84 +1,182 @@
 import Link from "next/link";
-import { requirePermission } from "@/lib/auth";
+import { requireSession } from "@/lib/auth";
 import { can } from "@/lib/permissions";
-import { ConfirmButton } from "@/components/ConfirmButton";
-import { deleteArchived, unarchiveLetter } from "@/features/archive-actions";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileMap } from "@/lib/data";
-import { Card, EmptyState, ErrorState, Field, Flash, inputClass, PageHeader, Pagination, SubmitButton, tableClass, buttonClass } from "@/components/ui";
-import { firstParam, formatDate, sanitizeSearch } from "@/lib/utils";
-import { PAGE_SIZE } from "@/lib/constants";
+import { Card, EmptyState, PageHeader, StatusBadge } from "@/components/ui";
+import { Avatar } from "@/components/letters";
+import { KpiCard } from "@/components/dashboard";
+import { cn, firstParam, todayJakarta } from "@/lib/utils";
+import { AlarmClock, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Hash, Inbox, MailOpen, Pencil, Send, Split } from "lucide-react";
 
-export const metadata = { title: "Arsip" };
+export const metadata = { title: "Agenda" };
+type Row = Record<string, any>;
+
+const EDGE: Record<string, string> = { MENDESAK: "border-l-bad", TINGGI: "border-l-brass", NORMAL: "border-l-navy-600", RENDAH: "border-l-line-strong" };
+const DAY_ABBR = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+
+const dayDiff = (a: string, b: string) => Math.round((new Date(a + "T00:00:00Z").getTime() - new Date(b + "T00:00:00Z").getTime()) / 86400000);
+const shiftMonth = (ym: string, delta: number) => { const [y, m] = ym.split("-").map(Number); const d = new Date(Date.UTC(y, m - 1 + delta, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; };
 
 export default async function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const sess = await requirePermission("archives.view");
-  const canManage = can(sess.permissions, "archives.manage");
-  const canDelete = can(sess.permissions, "archives.delete");
+  const s = await requireSession();
   const sb = createClient();
-  const jenis = firstParam(searchParams.jenis);
-  const q = sanitizeSearch(firstParam(searchParams.q));
-  const from = firstParam(searchParams.from); const to = firstParam(searchParams.to);
-  const page = Math.max(1, parseInt(firstParam(searchParams.page) || "1", 10) || 1);
-  let query = sb.from("archive_records").select("id, archived_by, archived_at, retention_note, incoming:incoming_letters(id, subject, sender, external_number), outgoing:outgoing_letters(id, subject, recipient, number)", { count: "exact" });
-  if (jenis === "masuk") query = query.not("incoming_letter_id", "is", null);
-  if (jenis === "keluar") query = query.not("outgoing_letter_id", "is", null);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(from)) query = query.gte("archived_at", from);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(to)) query = query.lte("archived_at", to + "T23:59:59");
-  const { data, count, error } = await query.order("archived_at", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  let rows = (data ?? []) as any[];
-  if (q) { const lq = q.toLowerCase(); rows = rows.filter((r) => [r.incoming?.subject, r.incoming?.sender, r.incoming?.external_number, r.outgoing?.subject, r.outgoing?.recipient, r.outgoing?.number].some((x) => x?.toLowerCase().includes(lq))); }
-  const names = await getProfileMap(sb, rows.map((r) => r.archived_by));
-  const params: Record<string, string> = {}; if (jenis) params.jenis = jenis; if (q) params.q = q; if (from) params.from = from; if (to) params.to = to;
+  const p = (x: Parameters<typeof can>[1]) => can(s.permissions, x);
+  const today = todayJakarta();
+  const bulanParam = firstParam(searchParams.bulan);
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(bulanParam) ? bulanParam : today.slice(0, 7);
+
+  const none = { data: [] as Row[] };
+  const [dispQ, incQ, apprQ, finQ, revQ] = await Promise.all([
+    sb.from("letter_dispositions").select("id, due_date, status, priority, instruction, assigned_to, incoming:incoming_letters(subject, is_confidential)").not("due_date", "is", null).neq("status", "SELESAI").order("due_date").limit(200),
+    p("letters.incoming.update") ? sb.from("incoming_letters").select("id, subject, sender, received_date, status, is_confidential").in("status", ["DICATAT", "DIVERIFIKASI"]).order("received_date").limit(30) : none,
+    p("letters.outgoing.approve") ? sb.from("outgoing_letters").select("id, subject, recipient, letter_date, status, is_confidential").in("status", ["DIAJUKAN", "DITINJAU"]).order("letter_date").limit(30) : none,
+    p("letters.outgoing.update") ? sb.from("outgoing_letters").select("id, subject, recipient, letter_date, is_confidential").eq("status", "DISETUJUI").order("letter_date").limit(30) : none,
+    p("letters.outgoing.create") ? sb.from("outgoing_letters").select("id, subject, recipient, letter_date, is_confidential").eq("status", "PERLU_REVISI").eq("created_by", s.userId).limit(30) : none,
+  ]);
+
+  const disp = ((dispQ.data ?? []) as Row[]).filter((d) => d.assigned_to === s.userId || p("letters.disposition.create"));
+  const names = await getProfileMap(sb, disp.map((d) => d.assigned_to as string));
+
+  // ---- Menunggu tindakan (tanpa tenggat) ----
+  type Pending = { id: string; href: string; icon: React.ComponentType<{ className?: string }>; title: string; meta: string; badge: string; since: string };
+  const subj = (c: boolean, t: string) => (c ? "Surat rahasia" : t);
+  const pending: Pending[] = [];
+  ((apprQ.data ?? []) as Row[]).forEach((l) => pending.push({ id: "a" + l.id, href: `/surat-keluar/${l.id}`, icon: Send, title: subj(l.is_confidential, l.subject), meta: `Menunggu persetujuan - kepada ${l.recipient}`, badge: l.status, since: l.letter_date }));
+  ((incQ.data ?? []) as Row[]).forEach((l) => pending.push({ id: "i" + l.id, href: `/surat-masuk/${l.id}`, icon: MailOpen, title: subj(l.is_confidential, l.subject), meta: `Perlu diproses - dari ${l.sender}`, badge: l.status, since: l.received_date }));
+  ((finQ.data ?? []) as Row[]).forEach((l) => pending.push({ id: "f" + l.id, href: `/surat-keluar/${l.id}`, icon: Hash, title: subj(l.is_confidential, l.subject), meta: `Siap diberi nomor - kepada ${l.recipient}`, badge: "DISETUJUI", since: l.letter_date }));
+  ((revQ.data ?? []) as Row[]).forEach((l) => pending.push({ id: "r" + l.id, href: `/surat-keluar/${l.id}`, icon: Pencil, title: subj(l.is_confidential, l.subject), meta: `Perlu revisi - kepada ${l.recipient}`, badge: "PERLU_REVISI", since: l.letter_date }));
+  pending.sort((a, b) => a.since.localeCompare(b.since));
+
+  // ---- Statistik ----
+  const overdue = disp.filter((d) => d.due_date < today).length;
+  const todayCount = disp.filter((d) => d.due_date === today).length;
+  const week = disp.filter((d) => d.due_date > today && dayDiff(d.due_date, today) <= 7).length;
+
+  // ---- Linimasa tenggat ----
+  const byDate = new Map<string, Row[]>();
+  disp.forEach((d) => byDate.set(d.due_date as string, [...(byDate.get(d.due_date as string) ?? []), d]));
+  const dates = Array.from(byDate.keys()).sort();
+  const rel = (d: string) => { const n = dayDiff(d, today); return n < 0 ? { text: `Lewat ${Math.abs(n)} hari`, cls: "text-bad" } : n === 0 ? { text: "Hari ini", cls: "text-brass-dark" } : n === 1 ? { text: "Besok", cls: "text-brass-dark" } : { text: `${n} hari lagi`, cls: "text-ink-mute" }; };
+
+  // ---- Kalender bulanan ----
+  const [cy, cm] = month.split("-").map(Number);
+  const first = new Date(Date.UTC(cy, cm - 1, 1));
+  const lead = (first.getUTCDay() + 6) % 7; // Senin = 0
+  const daysInMonth = new Date(Date.UTC(cy, cm, 0)).getUTCDate();
+  const cells: (number | null)[] = [...Array(lead).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  while (cells.length % 7) cells.push(null);
+  const monthLabel = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric", timeZone: "UTC" }).format(first);
+  const key = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
+
   return (
-    <>
-      <PageHeader title="Arsip digital" description="Surat masuk dan keluar yang sudah diarsipkan. Pencarian teks berlaku pada halaman yang sedang tampil." />
-      <Flash ok={firstParam(searchParams.ok)} error={firstParam(searchParams.error)} />
-      <Card>
-        <form className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto]" role="search">
-          <div><label htmlFor="q" className="sr-only">Cari</label><input id="q" name="q" defaultValue={q} placeholder="Cari perihal, pihak, nomor" className={inputClass} /></div>
-          <div><label htmlFor="jenis" className="sr-only">Jenis</label><select id="jenis" name="jenis" defaultValue={jenis} className={inputClass}><option value="">Semua jenis</option><option value="masuk">Surat masuk</option><option value="keluar">Surat keluar</option></select></div>
-          <div><label htmlFor="from" className="sr-only">Diarsipkan dari</label><input id="from" name="from" type="date" defaultValue={from} className={inputClass} title="Diarsipkan dari" /></div>
-          <div><label htmlFor="to" className="sr-only">Diarsipkan sampai</label><input id="to" name="to" type="date" defaultValue={to} className={inputClass} title="Diarsipkan sampai" /></div>
-          <div className="flex gap-2"><SubmitButton variant="secondary">Terapkan</SubmitButton>{(q || jenis || from || to) && <Link href="/arsip" className={buttonClass("ghost")}>Reset</Link>}</div>
-        </form>
-        {error ? <ErrorState message="Arsip tidak dapat dimuat." /> : !rows.length ? <EmptyState title="Belum ada arsip" description="Surat yang selesai diproses dan diarsipkan akan tampil di sini." /> : (
-          <>
-            <div className={tableClass.wrap}><table className={tableClass.table}>
-              <caption className="sr-only">Daftar arsip</caption>
-              <thead><tr><th scope="col" className={tableClass.th}>Jenis</th><th scope="col" className={tableClass.th}>Perihal</th><th scope="col" className={tableClass.th}>Pihak</th><th scope="col" className={tableClass.th}>Nomor</th><th scope="col" className={tableClass.th}>Diarsipkan</th>{(canManage || canDelete) && <th scope="col" className={tableClass.th}><span className="sr-only">Tindakan</span></th>}</tr></thead>
-              <tbody>{rows.map((r) => {
-                const inc = r.incoming; const out = r.outgoing;
-                return (<tr key={r.id} className="hover:bg-surface"><td className={tableClass.td}>{inc ? "Masuk" : "Keluar"}</td>
-                  <td className={tableClass.td}><Link className="font-medium text-navy-800 hover:underline" href={inc ? `/surat-masuk/${inc.id}` : `/surat-keluar/${out?.id}`}>{inc?.subject ?? out?.subject}</Link>{r.retention_note && <p className="mt-0.5 text-xs text-ink-mute">{r.retention_note}</p>}</td>
-                  <td className={tableClass.td}>{inc?.sender ?? out?.recipient}</td><td className={tableClass.td + " tabular-nums"}>{inc?.external_number ?? out?.number ?? "-"}</td>
-                  <td className={tableClass.td + " whitespace-nowrap"}>{formatDate(r.archived_at)}<p className="text-xs text-ink-mute">{names[r.archived_by]}</p></td>
-                  {(canManage || canDelete) && (
-                    <td className={tableClass.td}>
-                      <form action={unarchiveLetter} className="flex flex-wrap gap-2">
-                        <input type="hidden" name="kind" value={inc ? "incoming" : "outgoing"} /><input type="hidden" name="id" value={inc ? inc.id : out?.id} />
-                        {canManage && (
-                          <ConfirmButton label="Batalkan arsip" title="Batalkan pengarsipan?" confirmLabel="Batalkan arsip"
-                            message={`Surat dikembalikan ke status ${inc ? "Selesai" : "Dikirim"} dan keluar dari arsip. Tindakan ini tercatat di audit log.`}>
-                            <Field label="Alasan pembatalan" htmlFor={`ua-${r.id}`} required><input id={`ua-${r.id}`} name="reason" required minLength={5} className={inputClass} placeholder="mis. salah memilih surat" /></Field>
-                          </ConfirmButton>
-                        )}
-                        {canDelete && (
-                          <ConfirmButton label="Hapus arsip" title="Hapus surat arsip ini?" confirmLabel="Hapus arsip" formAction={deleteArchived}
-                            message="Surat disembunyikan dari semua daftar dan tidak dapat dipulihkan lewat aplikasi. Berkas lampiran tidak ikut dihapus dari penyimpanan. Tercatat di audit log. Jika hanya salah mengarsipkan, gunakan Batalkan arsip.">
-                            <Field label="Ketik HAPUS untuk konfirmasi" htmlFor={`dc-${r.id}`}><input id={`dc-${r.id}`} name="confirm" autoComplete="off" className={inputClass} /></Field>
-                            <Field label="Alasan penghapusan" htmlFor={`dr-${r.id}`}><input id={`dr-${r.id}`} name="delete_reason" className={inputClass} placeholder="mis. surat dicatat dua kali" /></Field>
-                          </ConfirmButton>
-                        )}
-                      </form>
-                    </td>
-                  )}</tr>);
-              })}</tbody>
-            </table></div>
-            <Pagination page={page} total={count ?? 0} pageSize={PAGE_SIZE} basePath="/arsip" params={params} />
-          </>
-        )}
-      </Card>
-    </>
+    <div className="space-y-6">
+      <PageHeader title="Agenda" description="Tenggat disposisi dan pekerjaan surat yang menunggu tindakan." />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Lewat tenggat" value={overdue} hint={overdue ? "Perlu segera ditindaklanjuti" : "Tidak ada yang terlambat"} icon={AlarmClock} tone={overdue ? "bad" : "default"} />
+        <KpiCard label="Jatuh tempo hari ini" value={todayCount} icon={CalendarClock} tone={todayCount ? "warn" : "default"} />
+        <KpiCard label="7 hari ke depan" value={week} hint="Disposisi dengan tenggat" icon={CalendarDays} />
+        <KpiCard label="Menunggu tindakan" value={pending.length} hint="Surat yang perlu diproses" icon={Inbox} tone={pending.length ? "warn" : "default"} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="min-w-0 space-y-6">
+          <Card title="Linimasa tenggat disposisi">
+            {!dates.length ? <EmptyState title="Tidak ada tenggat" description="Disposisi yang memiliki tanggal tenggat akan tampil di sini, urut dari yang paling dekat." /> : (
+              <ol className="space-y-6">
+                {dates.map((d) => {
+                  const r = rel(d); const dt = new Date(d + "T00:00:00Z");
+                  return (
+                    <li key={d} id={`tgl-${d}`} className="scroll-mt-24 grid grid-cols-[64px_1fr] gap-4">
+                      <div className={cn("flex h-16 w-16 flex-col items-center justify-center rounded-xl border", d < today ? "border-bad/30 bg-bad-bg" : d === today ? "border-brass/50 bg-brass-soft" : "border-line bg-surface")}>
+                        <span className="font-display text-2xl font-semibold leading-none tabular-nums text-navy-900">{dt.getUTCDate()}</span>
+                        <span className="mt-1 text-[11px] font-medium uppercase tracking-wide text-ink-soft">{new Intl.DateTimeFormat("id-ID", { month: "short", timeZone: "UTC" }).format(dt)}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="mb-2 text-sm"><span className="font-medium text-ink">{new Intl.DateTimeFormat("id-ID", { weekday: "long", timeZone: "UTC" }).format(dt)}</span> <span className={cn("ml-2 text-xs font-semibold", r.cls)}>{r.text}</span></p>
+                        <ul className="space-y-2.5">
+                          {(byDate.get(d) ?? []).map((x) => (
+                            <li key={x.id as string}>
+                              <Link href={`/disposisi/${x.id}`} className={cn("group flex items-center gap-3 rounded-lg border border-l-4 border-line bg-white p-3.5 transition-all hover:-translate-y-0.5 hover:shadow-lift focus-visible:outline focus-visible:outline-2 focus-visible:outline-navy-600", EDGE[x.priority as string] ?? "border-l-navy-600")}>
+                                <Split className="h-[18px] w-[18px] shrink-0 text-navy-700" aria-hidden />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium text-ink group-hover:text-navy-800">{x.incoming?.is_confidential ? "Surat rahasia" : x.incoming?.subject ?? "Surat"}</p>
+                                  <p className="mt-0.5 line-clamp-1 text-xs text-ink-soft">{x.instruction}</p>
+                                </div>
+                                <span className="hidden items-center gap-2 text-xs text-ink-soft sm:flex"><Avatar name={names[x.assigned_to as string] ?? "?"} size={24} />{names[x.assigned_to as string] ?? "-"}</span>
+                                <StatusBadge value={x.status as string} />
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </Card>
+
+          <Card title="Menunggu tindakan">
+            {!pending.length ? <EmptyState title="Semua sudah beres" description="Surat yang perlu diproses, disetujui, atau direvisi akan muncul di sini." /> : (
+              <ul className="-my-1 divide-y divide-line">
+                {pending.map((it) => {
+                  const Icon = it.icon; const age = dayDiff(today, it.since);
+                  return (
+                    <li key={it.id}>
+                      <Link href={it.href} className="group flex items-center gap-3.5 rounded-lg px-2 py-3 transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-navy-600">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-navy-50 text-navy-700" aria-hidden><Icon className="h-[18px] w-[18px]" /></span>
+                        <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink group-hover:text-navy-800">{it.title}</p><p className="mt-0.5 truncate text-xs text-ink-mute">{it.meta}</p></div>
+                        <div className="flex shrink-0 flex-col items-end gap-1"><StatusBadge value={it.badge} /><span className={cn("text-xs tabular-nums", age >= 7 ? "font-semibold text-bad" : age >= 3 ? "font-medium text-brass-dark" : "text-ink-mute")}>{age <= 0 ? "Hari ini" : `${age} hari lalu`}</span></div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+        </div>
+
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <Card>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold capitalize text-navy-900">{monthLabel}</h2>
+              <div className="flex gap-1">
+                <Link href={`/agenda?bulan=${shiftMonth(month, -1)}`} aria-label="Bulan sebelumnya" className="flex h-8 w-8 items-center justify-center rounded-md border border-line-strong text-ink-soft hover:bg-surface"><ChevronLeft className="h-4 w-4" /></Link>
+                <Link href={`/agenda?bulan=${shiftMonth(month, 1)}`} aria-label="Bulan berikutnya" className="flex h-8 w-8 items-center justify-center rounded-md border border-line-strong text-ink-soft hover:bg-surface"><ChevronRight className="h-4 w-4" /></Link>
+              </div>
+            </div>
+            <table className="w-full table-fixed text-center">
+              <caption className="sr-only">Kalender {monthLabel}. Hari bertanda titik memiliki tenggat disposisi.</caption>
+              <thead><tr>{DAY_ABBR.map((d) => <th key={d} scope="col" className="pb-2 text-[11px] font-medium uppercase tracking-wide text-ink-mute">{d}</th>)}</tr></thead>
+              <tbody>
+                {Array.from({ length: cells.length / 7 }, (_, w) => (
+                  <tr key={w}>
+                    {cells.slice(w * 7, w * 7 + 7).map((d, i) => {
+                      if (d === null) return <td key={i} />;
+                      const k = key(d); const items = byDate.get(k); const isToday = k === today; const late = !!items && k < today;
+                      const inner = (
+                        <span className={cn("mx-auto flex h-9 w-9 flex-col items-center justify-center rounded-lg text-sm tabular-nums", isToday ? "bg-navy-800 font-semibold text-white" : items ? "font-medium text-ink hover:bg-surface" : "text-ink-soft")}>
+                          {d}
+                          {items && <span className={cn("mt-0.5 h-1 w-1 rounded-full", isToday ? "bg-brass-soft" : late ? "bg-bad" : "bg-brass")} aria-hidden />}
+                        </span>
+                      );
+                      return <td key={i} className="p-0.5">{items ? <a href={`#tgl-${k}`} aria-label={`${d}, ${items.length} tenggat`}>{inner}</a> : inner}</td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-ink-mute">
+              <li className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-navy-800" aria-hidden />Hari ini</li>
+              <li className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-brass" aria-hidden />Ada tenggat</li>
+              <li className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-bad" aria-hidden />Terlambat</li>
+            </ul>
+            {month !== today.slice(0, 7) && <Link href="/agenda" className="mt-3 block text-center text-xs font-medium text-navy-700 hover:underline">Kembali ke bulan ini</Link>}
+          </Card>
+        </aside>
+      </div>
+    </div>
   );
 }

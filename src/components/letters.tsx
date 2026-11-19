@@ -71,8 +71,8 @@ export function FilterBar({ q, placeholder, hidden, children, resetHref, active 
   );
 }
 
-export function StatusChips({ basePath, params, active, items }: { basePath: string; params: Record<string, string>; active: string; items: { value: string; label: string; count: number }[] }) {
-  const href = (v: string) => { const sp = new URLSearchParams({ ...params }); if (v) sp.set("status", v); const qs = sp.toString(); return qs ? `${basePath}?${qs}` : basePath; };
+export function StatusChips({ basePath, params, active, items, param = "status" }: { basePath: string; params: Record<string, string>; active: string; items: { value: string; label: string; count?: number }[]; param?: string }) {
+  const href = (v: string) => { const sp = new URLSearchParams({ ...params }); if (v) sp.set(param, v); const qs = sp.toString(); return qs ? `${basePath}?${qs}` : basePath; };
   return (
     <nav aria-label="Filter status" className="-mx-1 overflow-x-auto px-1 pb-1">
       <ul className="flex gap-2">
@@ -84,7 +84,7 @@ export function StatusChips({ basePath, params, active, items }: { basePath: str
                 className={cn("inline-flex min-h-[36px] items-center gap-2 whitespace-nowrap rounded-full border px-3.5 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-navy-600",
                   on ? "border-navy-800 bg-navy-800 font-medium text-white" : "border-line-strong bg-white text-ink-soft hover:border-navy-600 hover:text-ink")}>
                 {it.label}
-                <span className={cn("rounded-full px-1.5 text-[11px] font-semibold tabular-nums", on ? "bg-white/20 text-white" : it.count ? "bg-surface text-ink-soft" : "text-ink-mute")}>{it.count}</span>
+                {it.count !== undefined && <span className={cn("rounded-full px-1.5 text-[11px] font-semibold tabular-nums", on ? "bg-white/20 text-white" : it.count ? "bg-surface text-ink-soft" : "text-ink-mute")}>{it.count}</span>}
               </Link>
             </li>
           );
