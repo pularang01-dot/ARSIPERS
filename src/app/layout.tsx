@@ -8,7 +8,14 @@ export const metadata: Metadata = {
   applicationName: "ARSIPERS",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "ARSIPERS", statusBarStyle: "default" },
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
   robots: { index: false, follow: false },
 };
 export const viewport: Viewport = { themeColor: "#0F1F3D", width: "device-width", initialScale: 1 };
