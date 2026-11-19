@@ -3,6 +3,7 @@ import Link from "next/link";
 import { signIn, signInWithGoogle } from "./actions";
 import { buttonClass, Field, Flash, inputClass, SubmitButton } from "@/components/ui";
 import { firstParam } from "@/lib/utils";
+import { Copyright } from "@/components/Copyright";
 
 export const metadata = { title: "Masuk" };
 
@@ -58,6 +59,7 @@ export default function LoginPage({ searchParams }: { searchParams: Record<strin
             <SubmitButton className="w-full">Masuk</SubmitButton>
           </form>
           <p className="mt-4 text-sm"><Link href="/lupa-password" className="text-navy-700 underline underline-offset-2">Lupa kata sandi?</Link></p>
+          <Copyright className="mt-12 text-center" />
         </div>
       </section>
     </main>

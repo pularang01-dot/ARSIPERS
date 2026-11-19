@@ -22,3 +22,7 @@ notifikasi, audit log, pengguna/role, dan PWA ringan.
 - `src/lib` auth, izin, validasi, workflow, penomoran, PDF, upload. `src/features` server actions.
 - `src/app/(app)` halaman terautentikasi. `src/app/api` unduh berkas, PDF, ekspor CSV.
 - `docs/` audit, matriks izin, keamanan, rencana uji, deployment, panduan pengguna, status implementasi.
+
+## Hak cipta
+
+© 2026 Viky Aditama dalam Program PPL Universitas PGRI Sumenep.

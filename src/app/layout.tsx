@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   title: { default: "ARSIPERS", template: "%s | ARSIPERS" },
   description: "Sistem informasi persuratan dan kearsipan sekolah",
   applicationName: "ARSIPERS",
+  authors: [{ name: "Viky Aditama" }],
+  creator: "Viky Aditama",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "ARSIPERS", statusBarStyle: "default" },
   icons: {

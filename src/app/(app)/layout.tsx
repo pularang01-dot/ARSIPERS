@@ -5,6 +5,7 @@ import { Sidebar, type NavItem } from "@/components/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
 import { Bell, Search } from "lucide-react";
+import { Copyright } from "@/components/Copyright";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
@@ -48,6 +49,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </header>
         <main id="konten" className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-7 lg:px-8">{children}</main>
+        <footer className="border-t border-line px-4 py-4 text-center lg:px-8"><Copyright /></footer>
       </div>
     </div>
   );
