@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -23,7 +24,7 @@ export function Sidebar({ items, user, signOut }: { items: NavItem[]; user: { na
 
   const brand = (
     <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-brass/60 bg-white/5 font-display text-lg font-bold text-white" aria-hidden>A</span>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-card"><Image src="/logo-256.png" alt="" width={256} height={264} className="h-8 w-auto" /></span>
       <div className="min-w-0 leading-tight">
         <p className="text-[15px] font-semibold tracking-[0.12em] text-white">ARSIPERS</p>
         <p className="truncate text-[11px] text-navy-100/70">SDN Pandian I Sumenep</p>
