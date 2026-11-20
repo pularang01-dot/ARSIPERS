@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { InstallProvider } from "@/components/install";
 
 export const metadata: Metadata = {
   title: { default: "ARSIPERS", template: "%s | ARSIPERS" },
@@ -26,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id">
       <body className="font-sans">
-        {children}
+        <InstallProvider>{children}</InstallProvider>
         <ServiceWorkerRegister />
       </body>
     </html>

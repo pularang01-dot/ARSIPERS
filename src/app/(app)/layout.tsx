@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
 import { Bell, Search } from "lucide-react";
 import { Copyright } from "@/components/Copyright";
+import { InstallBanner, InstallButton } from "@/components/install";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
@@ -40,6 +41,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               className="block h-10 w-full rounded-lg border border-line bg-white pl-9 pr-3 text-sm shadow-card placeholder:text-ink-mute focus-visible:outline focus-visible:outline-2 focus-visible:outline-navy-600" />
           </form>
           <div className="ml-auto flex items-center gap-3">
+            <InstallButton />
             <p className="hidden text-sm text-ink-soft md:block">{dateLabel}</p>
             <Link href="/notifikasi" aria-label={`Notifikasi${unread ? `, ${unread} belum dibaca` : ""}`}
               className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-white text-ink-soft shadow-card hover:text-ink">
@@ -48,7 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Link>
           </div>
         </header>
-        <main id="konten" className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-7 lg:px-8">{children}</main>
+        <main id="konten" className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-7 lg:px-8"><InstallBanner className="mb-6" />{children}</main>
         <footer className="border-t border-line px-4 py-4 text-center lg:px-8"><Copyright /></footer>
       </div>
     </div>

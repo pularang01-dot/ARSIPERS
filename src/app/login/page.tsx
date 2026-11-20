@@ -4,6 +4,7 @@ import { signIn, signInWithGoogle } from "./actions";
 import { buttonClass, Field, Flash, inputClass, SubmitButton } from "@/components/ui";
 import { firstParam } from "@/lib/utils";
 import { Copyright } from "@/components/Copyright";
+import { InstallBanner, InstallButton } from "@/components/install";
 
 export const metadata = { title: "Masuk" };
 
@@ -31,13 +32,15 @@ export default function LoginPage({ searchParams }: { searchParams: Record<strin
       </section>
 
       {/* Formulir */}
-      <section className="flex items-center justify-center px-5 py-12">
+      <section className="relative flex items-center justify-center px-5 py-12">
+        <div className="absolute right-4 top-4"><InstallButton /></div>
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center text-center lg:hidden">
             <Image src="/logo-256.png" alt="Lencana ARSIPERS SDN Pandian I Sumenep" width={256} height={264} priority className="h-24 w-auto" />
             <p className="mt-3 text-sm font-semibold tracking-[0.14em] text-navy-900">ARSIPERS</p>
             <p className="text-xs text-ink-soft">SDN Pandian I Sumenep</p>
           </div>
+          <InstallBanner className="mb-6" />
           <h2 className="font-display text-[28px] font-semibold leading-tight tracking-tight text-navy-900">Masuk ke ARSIPERS</h2>
           <p className="mb-6 mt-1.5 text-sm text-ink-soft">Gunakan akun yang didaftarkan administrator sekolah.</p>
           <Flash error={sessionMsg} ok={firstParam(searchParams.ok)} />
