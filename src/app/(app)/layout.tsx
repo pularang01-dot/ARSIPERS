@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (p("reports.view")) items.push({ href: "/laporan", label: "Laporan", icon: "reports", group: "Kearsipan" });
   if (p("users.manage")) items.push({ href: "/pengguna", label: "Pengguna", icon: "users", group: "Administrasi" });
   if (p("settings.manage")) items.push({ href: "/pengaturan", label: "Pengaturan", icon: "settings", group: "Administrasi" });
-  if (p("audit_logs.view")) items.push({ href: "/audit-log", label: "Audit log", icon: "audit", group: "Administrasi" });
+  if (p("audit_logs.view")) items.push({ href: "/audit-log", label: "Riwayat aktivitas", icon: "audit", group: "Administrasi" });
 
   const dateLabel = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }).format(new Date());
 

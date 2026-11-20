@@ -148,7 +148,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Record
             </Card>
           )}
           {p("audit_logs.view") && (
-            <Card title="Aktivitas terbaru" action={<Link href="/audit-log" className="text-xs font-medium text-navy-700 hover:underline">Audit log</Link>}>
+            <Card title="Aktivitas terbaru" action={<Link href="/audit-log" className="text-xs font-medium text-navy-700 hover:underline">Lihat semua</Link>}>
               {actRows.length ? (
                 <ol className="space-y-3.5">
                   {actRows.map((a) => (
