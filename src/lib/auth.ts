@@ -15,7 +15,13 @@ export type Session = {
 /** Sesi + izin dibaca dari database (bukan dari klien). Dicache per request. */
 export const getSession = cache(async (): Promise<Session | null> => {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  let user: { id: string; email?: string | null } | null = null;
+  try {
+    const r = await supabase.auth.getUser();
+    user = r.data.user;
+  } catch {
+    return null; // sesi rusak: perlakukan sebagai belum login
+  }
   if (!user) return null;
   const { data: profile } = await supabase.from("profiles").select("full_name, role_code, is_active").eq("id", user.id).maybeSingle();
   if (!profile || !profile.is_active) return null;

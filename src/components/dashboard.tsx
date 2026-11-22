@@ -129,7 +129,7 @@ export function VolumeChart({ labels, incoming, outgoing }: { labels: string[]; 
           <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Grafik batang jumlah surat masuk dan surat keluar per bulan selama enam bulan terakhir">
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#E5E2DA" strokeDasharray={t === 0 ? undefined : "3 4"} />
+                <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#DCE3EC" strokeDasharray={t === 0 ? undefined : "3 4"} />
                 <text x={L - 6} y={y(t) + 4} textAnchor="end" fontSize="10.5" fill="#6B7587">{t}</text>
               </g>
             ))}

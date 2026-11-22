@@ -7,8 +7,8 @@ const config: Config = {
       colors: {
         navy: { 950: "#0A1630", 900: "#0F1F3D", 800: "#152A4E", 700: "#1B3358", 600: "#2A4575", 100: "#E3E9F3", 50: "#F0F3F9" },
         ink: { DEFAULT: "#1E2633", soft: "#475266", mute: "#6B7587" },
-        surface: { DEFAULT: "#F5F4F0", card: "#FFFFFF" },
-        line: { DEFAULT: "#E5E2DA", strong: "#CFCBC0" },
+        surface: { DEFAULT: "#EFF3F8", card: "#FFFFFF" },
+        line: { DEFAULT: "#DCE3EC", strong: "#C2CCDA" },
         brass: { DEFAULT: "#A9812F", soft: "#F4ECD8", dark: "#7A5C1E" },
         ok: { DEFAULT: "#17653A", bg: "#E6F4EC" },
         warn: { DEFAULT: "#8A5A00", bg: "#FFF3D6" },

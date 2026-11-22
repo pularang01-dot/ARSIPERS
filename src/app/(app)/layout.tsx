@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <a href="#konten" className="sr-only z-50 rounded-md bg-white px-3 py-2 text-sm focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Lewati ke konten</a>
       <Sidebar items={items} user={{ name: s.fullName, role: ROLE_LABEL[s.roleCode as RoleCode] ?? s.roleCode }} signOut={signOut} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-line bg-surface/90 pl-16 pr-4 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-line bg-white/70 pl-16 pr-4 backdrop-blur-md lg:px-8">
           <form action="/surat-masuk" className="relative hidden max-w-md flex-1 sm:block" role="search">
             <label htmlFor="global-q" className="sr-only">Cari surat masuk</label>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-mute" aria-hidden />
