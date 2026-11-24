@@ -4,6 +4,7 @@ import { Card, Field, Flash, inputClass, PageHeader, StatusBadge, SubmitButton }
 import { firstParam } from "@/lib/utils";
 import { addCategory, saveSettings, saveTemplate, toggleCategory } from "@/features/admin-actions";
 import { previewNumber } from "@/lib/numbering";
+import { NumberFormatField } from "@/components/NumberFormatField";
 import { TEMPLATE_PLACEHOLDERS } from "@/lib/templates";
 
 export const metadata = { title: "Pengaturan" };
@@ -21,7 +22,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
   return (
     <>
       <PageHeader title="Pengaturan" description="Identitas sekolah dan aturan penomoran. Isi hanya data yang sudah dikonfirmasi pihak sekolah; kolom kosong tidak ditampilkan di PDF." />
-      <Flash ok={firstParam(searchParams.ok)} error={firstParam(searchParams.error)} />
+      <div id="pesan" className="scroll-mt-24"><Flash ok={firstParam(searchParams.ok)} error={firstParam(searchParams.error)} /></div>
       <form action={saveSettings} className="space-y-6">
         <Card title="Identitas sekolah">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -37,7 +38,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
         </Card>
         <Card title="Penomoran surat keluar">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="sm:col-span-3"><Field label="Format nomor" htmlFor="number_format" hint="Token: {SEQ} {YEAR} {MONTH} {MONTH_ROMAN} {CODE}. Wajib memuat {SEQ}. Format resmi harus dikonfirmasi sekolah; selama kosong, surat tidak dapat difinalkan."><input id="number_format" name="number_format" defaultValue={s.number_format ?? ""} className={inputClass} /></Field></div>
+            <div className="sm:col-span-3"><Field label="Format nomor" htmlFor="number_format" hint="Format resmi harus dikonfirmasi sekolah. Selama kosong, surat tidak dapat difinalkan."><NumberFormatField defaultValue={s.number_format ?? ""} pad={s.number_seq_pad ?? 3} /></Field></div>
             <Field label="Lebar nomor urut" htmlFor="number_seq_pad"><input id="number_seq_pad" name="number_seq_pad" type="number" min={1} max={8} defaultValue={s.number_seq_pad ?? 3} className={inputClass} /></Field>
             <Field label="Reset nomor urut" htmlFor="number_reset"><select id="number_reset" name="number_reset" defaultValue={s.number_reset ?? "YEARLY"} className={inputClass}><option value="YEARLY">Setiap tahun</option><option value="MONTHLY">Setiap bulan</option><option value="NEVER">Tidak pernah</option></select></Field>
             <div className="self-end text-sm"><p className="text-xs text-ink-mute">Pratinjau</p><p className="tabular-nums">{preview ?? "Belum dikonfigurasi"}</p></div>
@@ -46,18 +47,19 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
         </Card>
       </form>
 
-      <Card title="Kategori surat" className="mt-6">
+      <div id="kategori" className="scroll-mt-24"><Card title="Kategori surat" className="mt-6">
         <ul className="mb-5 divide-y divide-line">{(cats ?? []).map((c: any) => (
           <li key={c.id} className="flex items-center justify-between gap-3 py-2.5 text-sm"><span>{c.name} <span className="text-xs text-ink-mute">({c.kind === "incoming" ? "masuk" : "keluar"}, kode {c.code})</span></span>
             <form action={toggleCategory} className="flex items-center gap-2"><input type="hidden" name="id" value={c.id} /><input type="hidden" name="active" value={String(!c.is_active)} /><StatusBadge value={c.is_active ? "SELESAI" : "DRAFT"} tone={c.is_active ? "ok" : "idle"} /><SubmitButton variant="ghost" className="px-3 text-xs">{c.is_active ? "Nonaktifkan" : "Aktifkan"}</SubmitButton></form></li>))}
           {!cats?.length && <li className="py-2 text-sm text-ink-mute">Belum ada kategori. Tambahkan sesuai pedoman sekolah.</li>}</ul>
-        <form action={addCategory} className="grid gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_1fr_2fr_auto] sm:items-end">
+        <form action={addCategory} className="grid gap-3 border-t border-line pt-4 sm:grid-cols-[1fr_2fr_1.2fr_auto] sm:items-start">
           <Field label="Jenis" htmlFor="kind"><select id="kind" name="kind" className={inputClass}><option value="incoming">Surat masuk</option><option value="outgoing">Surat keluar</option></select></Field>
-          <Field label="Kode" htmlFor="code"><input id="code" name="code" required maxLength={20} className={inputClass} /></Field>
-          <Field label="Nama kategori" htmlFor="cname"><input id="cname" name="name" required className={inputClass} /></Field>
+          <Field label="Nama kategori" htmlFor="cname" required><input id="cname" name="name" required maxLength={80} placeholder="mis. Surat tugas" className={inputClass} /></Field>
+          <Field label="Kode" htmlFor="code" optional hint="Kosongkan agar dibuat otomatis dari nama."><input id="code" name="code" maxLength={20} className={inputClass} /></Field>
           <SubmitButton variant="secondary">Tambah</SubmitButton>
         </form>
       </Card>
+      </div>
 
       <Card title="Template surat" className="mt-6">
         <p className="mb-4 text-xs text-ink-mute">Placeholder: {TEMPLATE_PLACEHOLDERS.map((p) => `{{${p}}}`).join(" ")}. Setiap perubahan isi membuat versi template baru.</p>

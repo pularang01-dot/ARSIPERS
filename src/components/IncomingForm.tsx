@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Field, inputClass, SubmitButton, LinkButton } from "@/components/ui";
 import { NATURES, NATURE_HINT, STATUS_LABEL } from "@/lib/constants";
 import { UnsavedGuard } from "@/components/UnsavedGuard";
@@ -8,7 +9,7 @@ import { todayJakarta } from "@/lib/utils";
 type Cat = { id: string; code: string; name: string };
 type Values = Partial<{ id: string; external_number: string | null; letter_date: string; received_date: string; sender: string; origin_org: string | null; subject: string; category_id: string | null; classification: string | null; nature: string; summary: string | null; needs_disposition: boolean }>;
 
-export function IncomingForm({ action, categories, values, cancelHref, withFile }: { action: (f: FormData) => Promise<void>; categories: Cat[]; values?: Values; cancelHref: string; withFile?: boolean }) {
+export function IncomingForm({ action, categories, values, cancelHref, withFile, manageCategoriesHref }: { action: (f: FormData) => Promise<void>; categories: Cat[]; values?: Values; cancelHref: string; withFile?: boolean; manageCategoriesHref?: string }) {
   const today = todayJakarta();
   const v = values ?? {};
   return (
@@ -21,6 +22,7 @@ export function IncomingForm({ action, categories, values, cancelHref, withFile 
         <Field label="Nomor surat pengirim" htmlFor="external_number" optional><input id="external_number" name="external_number" defaultValue={v.external_number ?? ""} className={inputClass} maxLength={100} /></Field>
         <Field label="Kategori" htmlFor="category_id" optional>
           <select id="category_id" name="category_id" defaultValue={v.category_id ?? ""} className={inputClass}><option value="">Tanpa kategori</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          {manageCategoriesHref && <p className="mt-1.5 text-xs"><Link href={manageCategoriesHref} className="text-navy-700 underline underline-offset-2">Kategori yang dicari belum ada? Tambahkan di Pengaturan</Link></p>}
         </Field>
         <Field label="Tanggal surat" htmlFor="letter_date" required><input id="letter_date" name="letter_date" type="date" required defaultValue={v.letter_date ?? today} className={inputClass} /></Field>
         <Field label="Tanggal diterima" htmlFor="received_date" required hint="Tidak boleh sebelum tanggal surat."><input id="received_date" name="received_date" type="date" required defaultValue={v.received_date ?? today} className={inputClass} /></Field>

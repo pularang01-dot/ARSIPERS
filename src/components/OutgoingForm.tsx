@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Field, inputClass, SubmitButton, LinkButton } from "@/components/ui";
 import { NATURES, NATURE_HINT, STATUS_LABEL } from "@/lib/constants";
 import { UnsavedGuard } from "@/components/UnsavedGuard";
@@ -8,7 +9,7 @@ import { todayJakarta } from "@/lib/utils";
 type Opt = { id: string; name: string };
 type Values = Partial<{ id: string; recipient: string; subject: string; body: string; letter_date: string; letter_type: string; category_id: string | null; template_id: string | null; attachment_note: string | null; nature: string }>;
 
-export function OutgoingForm({ action, categories, templates, values, cancelHref, isNew }: { action: (f: FormData) => Promise<void>; categories: Opt[]; templates: Opt[]; values?: Values; cancelHref: string; isNew?: boolean }) {
+export function OutgoingForm({ action, categories, templates, values, cancelHref, isNew, manageCategoriesHref }: { action: (f: FormData) => Promise<void>; categories: Opt[]; templates: Opt[]; values?: Values; cancelHref: string; isNew?: boolean; manageCategoriesHref?: string }) {
   const v = values ?? {};
   return (
     <form id="outgoing-form" action={action} encType="multipart/form-data">
@@ -24,7 +25,8 @@ export function OutgoingForm({ action, categories, templates, values, cancelHref
 
       <FormSection step={2} title="Klasifikasi" description="Kode kategori dapat dipakai pada format nomor surat.">
         <Field label="Jenis surat" htmlFor="letter_type" required><input id="letter_type" name="letter_type" required defaultValue={v.letter_type ?? "UMUM"} className={inputClass} maxLength={50} /></Field>
-        <Field label="Kategori" htmlFor="category_id" optional><select id="category_id" name="category_id" defaultValue={v.category_id ?? ""} className={inputClass}><option value="">Tanpa kategori</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
+        <Field label="Kategori" htmlFor="category_id" optional><select id="category_id" name="category_id" defaultValue={v.category_id ?? ""} className={inputClass}><option value="">Tanpa kategori</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          {manageCategoriesHref && <p className="mt-1.5 text-xs"><Link href={manageCategoriesHref} className="text-navy-700 underline underline-offset-2">Kategori yang dicari belum ada? Tambahkan di Pengaturan</Link></p>}</Field>
         <div className="sm:col-span-2">
           <p className="mb-1.5 text-sm font-medium text-ink">Sifat surat <span className="text-bad" aria-hidden>*</span></p>
           <ChipRadio name="nature" defaultValue={v.nature ?? "BIASA"} options={NATURES.map((n) => ({ value: n, label: STATUS_LABEL[n], hint: NATURE_HINT[n] }))} />

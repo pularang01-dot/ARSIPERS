@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/data";
 import { Card, Flash, PageHeader } from "@/components/ui";
@@ -11,7 +12,7 @@ import { firstParam } from "@/lib/utils";
 export const metadata = { title: "Ubah surat keluar" };
 
 export default async function Page({ params, searchParams }: { params: { id: string }; searchParams: Record<string, string | string[] | undefined> }) {
-  await requirePermission("letters.outgoing.create", "letters.outgoing.update");
+  const sess = await requirePermission("letters.outgoing.create", "letters.outgoing.update");
   const sb = createClient();
   const { data: l } = await sb.from("outgoing_letters").select("*").eq("id", params.id).maybeSingle();
   if (!l) notFound();
@@ -21,7 +22,7 @@ export default async function Page({ params, searchParams }: { params: { id: str
     <>
       <PageHeader title="Ubah surat keluar" crumbs={[{ label: "Surat keluar", href: "/surat-keluar" }, { label: l.subject, href: `/surat-keluar/${l.id}` }, { label: "Ubah" }]} />
       <Flash error={firstParam(searchParams.error)} />
-      <Card><OutgoingForm action={updateOutgoing} categories={cats} templates={[]} values={l} cancelHref={`/surat-keluar/${l.id}`} /></Card>
+      <Card><OutgoingForm action={updateOutgoing} manageCategoriesHref={can(sess.permissions, "settings.manage") ? "/pengaturan#kategori" : undefined} categories={cats} templates={[]} values={l} cancelHref={`/surat-keluar/${l.id}`} /></Card>
     </>
   );
 }

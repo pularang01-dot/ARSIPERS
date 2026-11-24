@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories } from "@/lib/data";
 import { Card, Flash, PageHeader } from "@/components/ui";
@@ -11,7 +12,7 @@ import { firstParam } from "@/lib/utils";
 export const metadata = { title: "Ubah surat masuk" };
 
 export default async function Page({ params, searchParams }: { params: { id: string }; searchParams: Record<string, string | string[] | undefined> }) {
-  await requirePermission("letters.incoming.update");
+  const sess = await requirePermission("letters.incoming.update");
   const sb = createClient();
   const { data: l } = await sb.from("incoming_letters").select("*").eq("id", params.id).maybeSingle();
   if (!l) notFound();
@@ -21,7 +22,7 @@ export default async function Page({ params, searchParams }: { params: { id: str
     <>
       <PageHeader title="Ubah surat masuk" crumbs={[{ label: "Surat masuk", href: "/surat-masuk" }, { label: l.subject, href: `/surat-masuk/${l.id}` }, { label: "Ubah" }]} />
       <Flash error={firstParam(searchParams.error)} />
-      <Card><IncomingForm action={updateIncoming} categories={cats} values={l} cancelHref={`/surat-masuk/${l.id}`} /></Card>
+      <Card><IncomingForm action={updateIncoming} manageCategoriesHref={can(sess.permissions, "settings.manage") ? "/pengaturan#kategori" : undefined} categories={cats} values={l} cancelHref={`/surat-masuk/${l.id}`} /></Card>
     </>
   );
 }

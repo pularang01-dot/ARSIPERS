@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { go, friendlyError } from "@/lib/flash";
 import { inviteSchema, settingsSchema, userSchema, zodFlat } from "@/lib/validation";
-import { validateNumberFormat } from "@/lib/numbering";
+import { normalizeNumberFormat, validateNumberFormat } from "@/lib/numbering";
+import { categoryCodeFromName, normalizeCategoryCode } from "@/lib/categories";
 import { unknownPlaceholders } from "@/lib/templates";
 
 export async function inviteUser(formData: FormData) {
@@ -51,45 +52,59 @@ export async function updateUser(formData: FormData) {
 export async function saveSettings(formData: FormData) {
   await requirePermission("settings.manage");
   const parsed = settingsSchema.safeParse(Object.fromEntries(Array.from(formData.entries()).filter(([, v]) => typeof v === "string")));
-  if (!parsed.success) go("/pengaturan", "error", zodFlat(parsed.error));
+  if (!parsed.success) go("/pengaturan#pesan", "error", zodFlat(parsed.error));
   const d = parsed.data!;
-  if (d.number_format) { const e = validateNumberFormat(d.number_format); if (e) go("/pengaturan", "error", e); }
+  if (d.number_format) {
+    d.number_format = normalizeNumberFormat(d.number_format);
+    const e = validateNumberFormat(d.number_format);
+    if (e) go("/pengaturan#pesan", "error", `Format nomor surat belum benar. ${e}`);
+  }
   const { error } = await createClient().from("school_settings").update(d).eq("id", 1);
-  if (error) go("/pengaturan", "error", friendlyError(error));
+  if (error) go("/pengaturan#pesan", "error", friendlyError(error));
   revalidatePath("/pengaturan");
-  go("/pengaturan", "ok", "Pengaturan disimpan");
+  go("/pengaturan#pesan", "ok", "Pengaturan disimpan");
 }
 
 export async function addCategory(formData: FormData) {
   await requirePermission("settings.manage");
-  const kind = String(formData.get("kind")); const code = String(formData.get("code") ?? "").trim().toUpperCase(); const name = String(formData.get("name") ?? "").trim();
-  if (!["incoming", "outgoing"].includes(kind) || !/^[A-Z0-9.\-]{1,20}$/.test(code) || name.length < 2) go("/pengaturan", "error", "Kode (huruf/angka, maks 20) dan nama kategori wajib diisi");
-  const { error } = await createClient().from("letter_categories").insert({ kind, code, name });
-  if (error) go("/pengaturan", "error", friendlyError(error));
+  const kind = String(formData.get("kind") ?? "");
+  const name = String(formData.get("name") ?? "").trim().replace(/\s+/g, " ");
+  if (!["incoming", "outgoing"].includes(kind)) go("/pengaturan#pesan", "error", "Pilih jenis kategori: surat masuk atau surat keluar");
+  if (name.length < 2) go("/pengaturan#pesan", "error", "Nama kategori wajib diisi (minimal 2 huruf)");
+  if (name.length > 80) go("/pengaturan#pesan", "error", "Nama kategori terlalu panjang (maksimal 80 karakter)");
+  // Kode boleh dikosongkan: dibuat otomatis dari nama. Kode manual dirapikan (spasi menjadi strip).
+  const typed = normalizeCategoryCode(String(formData.get("code") ?? ""));
+  const code = typed || categoryCodeFromName(name);
+  if (!code) go("/pengaturan#pesan", "error", "Nama kategori harus memuat huruf atau angka");
+  const sb = createClient();
+  const { data: dup } = await sb.from("letter_categories").select("id, name").eq("kind", kind).eq("code", code).maybeSingle();
+  if (dup) go("/pengaturan#pesan", "error", `Kode "${code}" sudah dipakai oleh kategori "${dup.name}". Ubah nama atau isi kolom kode yang berbeda.`);
+  const { error } = await sb.from("letter_categories").insert({ kind, code, name });
+  if (error) go("/pengaturan#pesan", "error", friendlyError(error));
   revalidatePath("/pengaturan");
-  go("/pengaturan", "ok", "Kategori ditambahkan");
+  go("/pengaturan#pesan", "ok", `Kategori "${name}" ditambahkan untuk ${kind === "incoming" ? "surat masuk" : "surat keluar"} (kode ${code}).`);
 }
 
 export async function toggleCategory(formData: FormData) {
   await requirePermission("settings.manage");
   const { error } = await createClient().from("letter_categories").update({ is_active: String(formData.get("active")) === "true" }).eq("id", String(formData.get("id")));
-  if (error) go("/pengaturan", "error", friendlyError(error));
+  if (error) go("/pengaturan#pesan", "error", friendlyError(error));
   revalidatePath("/pengaturan");
-  go("/pengaturan", "ok", "Kategori diperbarui");
+  go("/pengaturan#pesan", "ok", "Kategori diperbarui");
 }
 
 export async function saveTemplate(formData: FormData) {
   await requirePermission("settings.manage");
   const id = String(formData.get("id") ?? ""); const name = String(formData.get("name") ?? "").trim(); const body = String(formData.get("body") ?? "");
   const letter_type = String(formData.get("letter_type") ?? "UMUM").trim() || "UMUM";
-  if (name.length < 2 || body.trim().length < 10) go("/pengaturan", "error", "Nama dan isi template wajib diisi");
+  if (name.length < 2 || body.trim().length < 10) go("/pengaturan#pesan", "error", "Nama dan isi template wajib diisi");
   const bad = unknownPlaceholders(body);
-  if (bad.length) go("/pengaturan", "error", `Placeholder tidak dikenal: ${bad.join(", ")}`);
+  if (bad.length) go("/pengaturan#pesan", "error", `Placeholder tidak dikenal: ${bad.join(", ")}`);
   const sb = createClient();
   const { error } = id ? await sb.from("letter_templates").update({ name, body, letter_type, is_active: formData.get("active") === "on" }).eq("id", id) : await sb.from("letter_templates").insert({ name, body, letter_type });
-  if (error) go("/pengaturan", "error", friendlyError(error));
+  if (error) go("/pengaturan#pesan", "error", friendlyError(error));
   revalidatePath("/pengaturan");
-  go("/pengaturan", "ok", "Template disimpan");
+  go("/pengaturan#pesan", "ok", "Template disimpan");
 }
 
 /** Kirim ulang undangan. Pengguna yang belum pernah menerima/menerima undangan: undangan baru.

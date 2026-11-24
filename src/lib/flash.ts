@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 
 /** Redirect dengan pesan sukses/gagal (ditampilkan oleh <Flash/>). Jangan dipanggil di dalam try/catch. */
 export function go(path: string, kind: "ok" | "error", message: string): never {
-  const sep = path.includes("?") ? "&" : "?";
-  redirect(`${path}${sep}${kind}=${encodeURIComponent(message.slice(0, 300))}`);
+  const [base, hash] = path.split("#");
+  const sep = base.includes("?") ? "&" : "?";
+  redirect(`${base}${sep}${kind}=${encodeURIComponent(message.slice(0, 300))}${hash ? "#" + hash : ""}`);
 }
 
 /** Pesan galat database yang ramah; galat teknis tidak dibocorkan ke pengguna. */
