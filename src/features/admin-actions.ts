@@ -95,16 +95,23 @@ export async function toggleCategory(formData: FormData) {
 
 export async function saveTemplate(formData: FormData) {
   await requirePermission("settings.manage");
-  const id = String(formData.get("id") ?? ""); const name = String(formData.get("name") ?? "").trim(); const body = String(formData.get("body") ?? "");
+  const id = String(formData.get("id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const body = String(formData.get("body") ?? "");
   const letter_type = String(formData.get("letter_type") ?? "UMUM").trim() || "UMUM";
-  if (name.length < 2 || body.trim().length < 10) go("/pengaturan#pesan", "error", "Nama dan isi template wajib diisi");
+  const back = id ? `/pengaturan/template/${id}` : "/pengaturan/template/baru";
+  if (!/^[0-9a-f-]{36}$/i.test(id) && id) go("/pengaturan/template", "error", "Template tidak valid");
+  if (name.length < 2) go(back, "error", "Nama template wajib diisi (minimal 2 huruf)");
+  if (body.trim().length < 10) go(back, "error", "Isi template terlalu pendek. Tulis isi surat atau pilih salah satu contoh.");
   const bad = unknownPlaceholders(body);
-  if (bad.length) go("/pengaturan#pesan", "error", `Placeholder tidak dikenal: ${bad.join(", ")}`);
+  if (bad.length) go(back, "error", `Isian tidak dikenal: ${bad.map((x) => `{{${x}}}`).join(", ")}. Gunakan tombol Sisipkan di penyunting.`);
   const sb = createClient();
-  const { error } = id ? await sb.from("letter_templates").update({ name, body, letter_type, is_active: formData.get("active") === "on" }).eq("id", id) : await sb.from("letter_templates").insert({ name, body, letter_type });
-  if (error) go("/pengaturan#pesan", "error", friendlyError(error));
-  revalidatePath("/pengaturan");
-  go("/pengaturan#pesan", "ok", "Template disimpan");
+  const { error } = id
+    ? await sb.from("letter_templates").update({ name, body, letter_type, is_active: formData.get("active") === "on" }).eq("id", id)
+    : await sb.from("letter_templates").insert({ name, body, letter_type });
+  if (error) go(back, "error", friendlyError(error));
+  revalidatePath("/pengaturan/template");
+  go("/pengaturan/template", "ok", id ? `Template "${name}" diperbarui.` : `Template "${name}" dibuat. Sekarang bisa dipilih saat membuat surat keluar.`);
 }
 
 /** Kirim ulang undangan. Pengguna yang belum pernah menerima/menerima undangan: undangan baru.

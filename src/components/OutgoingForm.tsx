@@ -4,12 +4,15 @@ import { NATURES, NATURE_HINT, STATUS_LABEL } from "@/lib/constants";
 import { UnsavedGuard } from "@/components/UnsavedGuard";
 import { ChipRadio, FormActions, FormSection } from "@/components/letters";
 import { FileInput } from "@/components/FileInput";
+import { LetterBodyField } from "@/components/LetterBodyField";
 import { todayJakarta } from "@/lib/utils";
 
 type Opt = { id: string; name: string };
+type Tpl = { id: string; name: string; body: string };
+type School = { name?: string | null; principal_name?: string | null; principal_nip?: string | null };
 type Values = Partial<{ id: string; recipient: string; subject: string; body: string; letter_date: string; letter_type: string; category_id: string | null; template_id: string | null; attachment_note: string | null; nature: string }>;
 
-export function OutgoingForm({ action, categories, templates, values, cancelHref, isNew, manageCategoriesHref }: { action: (f: FormData) => Promise<void>; categories: Opt[]; templates: Opt[]; values?: Values; cancelHref: string; isNew?: boolean; manageCategoriesHref?: string }) {
+export function OutgoingForm({ action, categories, templates, values, cancelHref, isNew, manageCategoriesHref, school }: { action: (f: FormData) => Promise<void>; categories: Opt[]; templates: Tpl[]; school?: School; values?: Values; cancelHref: string; isNew?: boolean; manageCategoriesHref?: string }) {
   const v = values ?? {};
   return (
     <form id="outgoing-form" action={action} encType="multipart/form-data">
@@ -33,11 +36,8 @@ export function OutgoingForm({ action, categories, templates, values, cancelHref
         </div>
       </FormSection>
 
-      <FormSection step={3} title="Isi surat" description="Tulis isi surat, atau pilih template dan kosongkan isi agar terisi otomatis.">
-        {isNew && templates.length > 0 && (
-          <div className="sm:col-span-2"><Field label="Template" htmlFor="template_id" hint="Dipakai hanya jika kolom isi dikosongkan."><select id="template_id" name="template_id" defaultValue={v.template_id ?? ""} className={inputClass}><option value="">Tanpa template</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></Field></div>
-        )}
-        <div className="sm:col-span-2"><Field label="Isi" htmlFor="body"><textarea id="body" name="body" rows={16} defaultValue={v.body ?? ""} className={inputClass + " font-display text-[15px] leading-7"} maxLength={20000} /></Field></div>
+      <FormSection step={3} title="Isi surat" description="Pilih template agar isi terisi otomatis, atau tulis sendiri. Tanggal, Yth., perihal, dan tanda tangan sudah otomatis ada di PDF.">
+        <LetterBodyField templates={templates} school={school ?? {}} defaultBody={v.body ?? ""} defaultTemplateId={v.template_id} showPicker={!!isNew} />
       </FormSection>
 
       {isNew && (

@@ -1,11 +1,10 @@
 import { requirePermission } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { Card, Field, Flash, inputClass, PageHeader, StatusBadge, SubmitButton } from "@/components/ui";
+import { Card, Field, Flash, inputClass, PageHeader, StatusBadge, SubmitButton, LinkButton } from "@/components/ui";
 import { firstParam } from "@/lib/utils";
-import { addCategory, saveSettings, saveTemplate, toggleCategory } from "@/features/admin-actions";
+import { addCategory, saveSettings, toggleCategory } from "@/features/admin-actions";
 import { previewNumber } from "@/lib/numbering";
 import { NumberFormatField } from "@/components/NumberFormatField";
-import { TEMPLATE_PLACEHOLDERS } from "@/lib/templates";
 
 export const metadata = { title: "Pengaturan" };
 
@@ -61,18 +60,8 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
       </Card>
       </div>
 
-      <Card title="Template surat" className="mt-6">
-        <p className="mb-4 text-xs text-ink-mute">Placeholder: {TEMPLATE_PLACEHOLDERS.map((p) => `{{${p}}}`).join(" ")}. Setiap perubahan isi membuat versi template baru.</p>
-        <div className="space-y-5">{(tpls ?? []).map((t: any) => (
-          <form key={t.id} action={saveTemplate} className="space-y-3 rounded-md border border-line p-4"><input type="hidden" name="id" value={t.id} />
-            <div className="grid gap-3 sm:grid-cols-[2fr_1fr]"><Field label={`Nama (versi ${t.version})`} htmlFor={`tn-${t.id}`}><input id={`tn-${t.id}`} name="name" defaultValue={t.name} className={inputClass} /></Field><Field label="Jenis surat" htmlFor={`tt-${t.id}`}><input id={`tt-${t.id}`} name="letter_type" defaultValue={t.letter_type} className={inputClass} /></Field></div>
-            <Field label="Isi template" htmlFor={`tb-${t.id}`}><textarea id={`tb-${t.id}`} name="body" rows={6} defaultValue={t.body} className={inputClass} /></Field>
-            <div className="flex items-center gap-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={t.is_active} className="h-4 w-4" />Aktif</label><SubmitButton variant="secondary">Simpan template</SubmitButton></div></form>))}
-          <form action={saveTemplate} className="space-y-3 rounded-md border border-dashed border-line-strong p-4"><h3 className="text-sm font-semibold text-navy-900">Template baru</h3>
-            <div className="grid gap-3 sm:grid-cols-[2fr_1fr]"><Field label="Nama" htmlFor="new-name"><input id="new-name" name="name" required className={inputClass} /></Field><Field label="Jenis surat" htmlFor="new-type"><input id="new-type" name="letter_type" defaultValue="UMUM" className={inputClass} /></Field></div>
-            <Field label="Isi template" htmlFor="new-body"><textarea id="new-body" name="body" rows={6} required className={inputClass} /></Field>
-            <SubmitButton variant="secondary">Tambah template</SubmitButton></form>
-        </div>
+      <Card title="Template surat" className="mt-6" action={<LinkButton href="/pengaturan/template" variant="secondary">Kelola template</LinkButton>}>
+        <p className="text-sm leading-relaxed text-ink-soft">Template adalah kerangka isi surat yang bisa dipilih saat membuat surat keluar, sehingga tujuan, perihal, dan nama sekolah terisi otomatis. {(tpls ?? []).length ? `Saat ini ada ${(tpls ?? []).length} template.` : "Belum ada template."}</p>
       </Card>
     </>
   );
