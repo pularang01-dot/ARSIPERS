@@ -1,5 +1,6 @@
 /** Contoh susunan umum untuk memulai. Bukan format resmi sekolah: sesuaikan dengan gaya surat yang berlaku.
- *  Tanggal, "Yth. ...", perihal, dan tanda tangan kepala sekolah sudah otomatis ada pada PDF, jadi cukup isi badan surat. */
+ *  Kop surat, tanggal, "Yth.", perihal/judul, dan tanda tangan kepala sekolah sudah otomatis ada pada PDF, jadi cukup isi badan surat.
+ *  Baris "Label : isi" yang berurutan otomatis diratakan seperti tabel pada PDF. */
 export const TEMPLATE_STARTERS: { id: string; name: string; type: string; body: string }[] = [
   {
     id: "undangan", name: "Surat undangan", type: "UNDANGAN",
@@ -16,16 +17,16 @@ Demikian undangan ini kami sampaikan. Atas perhatian dan kehadiran Bapak/Ibu, ka
   },
   {
     id: "tugas", name: "Surat tugas", type: "TUGAS",
-    body: `Yang bertanda tangan di bawah ini, Kepala {{nama_sekolah}}, menugaskan kepada:
+    body: `Berdasarkan [isi dasar penugasan, mis. surat undangan atau surat keputusan], dengan ini saya menugaskan kepada:
 
-Nama       : [isi nama]
-NIP        : [isi NIP]
-Jabatan    : [isi jabatan]
+Nama      : [isi nama]
+NIP       : [isi NIP]
+Jabatan   : [isi jabatan]
+Instansi  : {{nama_sekolah}}
 
-untuk melaksanakan tugas: {{perihal}}
-pada hari/tanggal [isi hari dan tanggal], bertempat di [isi tempat].
+Untuk [isi tugas yang dilaksanakan] pada hari [isi hari] tanggal [isi tanggal] di [isi tempat].
 
-Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.`,
+Demikian surat tugas ini dibuat untuk dapat diketahui dan dipergunakan sesuai keperluan.`,
   },
   {
     id: "keterangan", name: "Surat keterangan", type: "KETERANGAN",

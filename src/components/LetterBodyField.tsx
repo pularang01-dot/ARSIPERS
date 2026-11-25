@@ -4,7 +4,7 @@ import { buttonClass, inputClass } from "@/components/ui";
 import { renderTemplate } from "@/lib/templates";
 import { cn, formatDate } from "@/lib/utils";
 
-type Tpl = { id: string; name: string; body: string };
+type Tpl = { id: string; name: string; body: string; letter_type?: string };
 type School = { name?: string | null; principal_name?: string | null; principal_nip?: string | null };
 
 /** Isi surat + pilihan template: memilih template langsung mengisi kotak isi memakai tujuan, perihal, dan tanggal yang sudah diketik. */
@@ -17,6 +17,9 @@ export function LetterBodyField({ templates, school, defaultBody, defaultTemplat
     const t = templates.find((x) => x.id === id);
     if (!t) return;
     if (ask && body.trim() && !window.confirm("Isi surat saat ini akan diganti dengan template. Lanjutkan?")) { setTpl(""); return; }
+    // Jenis surat mengikuti template (mis. TUGAS) bila kolomnya masih "UMUM", agar PDF memakai tata letak yang sesuai.
+    const lt = document.getElementById("letter_type") as HTMLInputElement | null;
+    if (lt && t.letter_type && (!lt.value.trim() || lt.value.trim().toUpperCase() === "UMUM")) lt.value = t.letter_type;
     const d = val("letter_date");
     setBody(renderTemplate(t.body, { recipient: val("recipient"), subject: val("subject"), date: d ? formatDate(d) : "", school_name: school.name, principal_name: school.principal_name, principal_nip: school.principal_nip }));
   };

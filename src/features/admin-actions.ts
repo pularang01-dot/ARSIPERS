@@ -7,6 +7,7 @@ import { go, friendlyError } from "@/lib/flash";
 import { inviteSchema, settingsSchema, userSchema, zodFlat } from "@/lib/validation";
 import { normalizeNumberFormat, validateNumberFormat } from "@/lib/numbering";
 import { categoryCodeFromName, normalizeCategoryCode } from "@/lib/categories";
+import { sniffMime } from "@/lib/upload";
 import { unknownPlaceholders } from "@/lib/templates";
 
 export async function inviteUser(formData: FormData) {
@@ -59,7 +60,19 @@ export async function saveSettings(formData: FormData) {
     const e = validateNumberFormat(d.number_format);
     if (e) go("/pengaturan#pesan", "error", `Format nomor surat belum benar. ${e}`);
   }
-  const { error } = await createClient().from("school_settings").update(d).eq("id", 1);
+  // Logo kop: PNG atau JPG maksimal 300 KB (disimpan sebagai teks base64 di database)
+  const update: Record<string, unknown> = { ...d };
+  const logo = formData.get("logo");
+  if (formData.get("remove_logo") === "on") { update.logo_data = null; update.logo_mime = null; }
+  if (logo instanceof File && logo.size > 0) {
+    if (logo.size > 300 * 1024) go("/pengaturan#pesan", "error", "Logo terlalu besar (maksimal 300 KB). Perkecil gambarnya, misalnya ke lebar 400 piksel.");
+    const bytes = new Uint8Array(await logo.arrayBuffer());
+    const mime = sniffMime(bytes.subarray(0, 16));
+    if (mime !== "image/png" && mime !== "image/jpeg") go("/pengaturan#pesan", "error", "Logo harus berupa gambar PNG atau JPG.");
+    update.logo_data = Buffer.from(bytes).toString("base64");
+    update.logo_mime = mime;
+  }
+  const { error } = await createClient().from("school_settings").update(update).eq("id", 1);
   if (error) go("/pengaturan#pesan", "error", friendlyError(error));
   revalidatePath("/pengaturan");
   go("/pengaturan#pesan", "ok", "Pengaturan disimpan");

@@ -7,6 +7,7 @@ import { outgoingSchema, zodFlat } from "@/lib/validation";
 import { saveAttachment } from "@/features/attachments";
 import { renderTemplate } from "@/lib/templates";
 import { formatDate } from "@/lib/utils";
+import { hasUnfilled } from "@/lib/letterhead";
 
 const fd = (f: FormData) => Object.fromEntries(Array.from(f.entries()).filter(([, v]) => typeof v === "string"));
 const str = (f: FormData, k: string) => String(f.get(k) ?? "");
@@ -50,6 +51,10 @@ export async function transitionOutgoing(formData: FormData) {
   await requirePermission("letters.outgoing.submit", "letters.outgoing.approve");
   const id = str(formData, "id"); const action = str(formData, "action");
   if (!ACTION_MSG[action]) go(`/surat-keluar/${id}`, "error", "Aksi tidak dikenal");
+  if (action === "SUBMIT") {
+    const { data: l } = await createClient().from("outgoing_letters").select("body").eq("id", id).maybeSingle();
+    if (l && hasUnfilled(l.body as string)) go(`/surat-keluar/${id}`, "error", "Masih ada bagian [isi ...] pada isi surat yang belum dilengkapi. Ubah draft terlebih dahulu sebelum mengajukan.");
+  }
   const { error } = await createClient().rpc("transition_outgoing", { p_id: id, p_action: action, p_note: str(formData, "note") || null });
   if (error) go(`/surat-keluar/${id}`, "error", friendlyError(error));
   revalidatePath(`/surat-keluar/${id}`);

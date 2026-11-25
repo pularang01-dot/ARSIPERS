@@ -54,6 +54,7 @@ export const settingsSchema = z.object({
   name: optionalText(200), npsn: optionalText(20), address: optionalText(500), phone: optionalText(50),
   email: z.string().trim().email("Email tidak valid").optional().or(z.literal("")).transform((v) => v || null),
   principal_name: optionalText(200), principal_nip: optionalText(30), letterhead_note: optionalText(500),
+  letterhead_parent: optionalText(120), letter_city: optionalText(60), letterhead_rule: z.enum(["THICK", "DOUBLE", "NONE"]).default("THICK"),
   number_format: z.string().trim().max(120).optional().transform((v) => v || null),
   number_seq_pad: z.coerce.number().int().min(1).max(8),
   number_reset: z.enum(["YEARLY", "MONTHLY", "NEVER"]),

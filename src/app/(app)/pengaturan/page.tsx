@@ -5,6 +5,7 @@ import { firstParam } from "@/lib/utils";
 import { addCategory, saveSettings, toggleCategory } from "@/features/admin-actions";
 import { previewNumber } from "@/lib/numbering";
 import { NumberFormatField } from "@/components/NumberFormatField";
+import { LetterheadEditor } from "@/components/LetterheadEditor";
 
 export const metadata = { title: "Pengaturan" };
 
@@ -20,19 +21,21 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
   const preview = s.number_format ? previewNumber(s.number_format, 1, s.number_seq_pad ?? 3, new Date(), "UMUM") : null;
   return (
     <>
-      <PageHeader title="Pengaturan" description="Identitas sekolah dan aturan penomoran. Isi hanya data yang sudah dikonfirmasi pihak sekolah; kolom kosong tidak ditampilkan di PDF." />
+      <PageHeader title="Pengaturan" description="Kop surat, data pejabat, dan aturan penomoran. Isi hanya data yang sudah dikonfirmasi pihak sekolah; kolom kosong tidak dicetak di PDF." />
       <div id="pesan" className="scroll-mt-24"><Flash ok={firstParam(searchParams.ok)} error={firstParam(searchParams.error)} /></div>
-      <form action={saveSettings} className="space-y-6">
-        <Card title="Identitas sekolah">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nama sekolah" htmlFor="name"><input id="name" name="name" defaultValue={s.name ?? ""} className={inputClass} /></Field>
-            <Field label="NPSN" htmlFor="npsn"><input id="npsn" name="npsn" defaultValue={s.npsn ?? ""} className={inputClass} /></Field>
-            <div className="sm:col-span-2"><Field label="Alamat" htmlFor="address"><input id="address" name="address" defaultValue={s.address ?? ""} className={inputClass} /></Field></div>
-            <Field label="Telepon" htmlFor="phone"><input id="phone" name="phone" defaultValue={s.phone ?? ""} className={inputClass} /></Field>
-            <Field label="Email sekolah" htmlFor="email"><input id="email" name="email" type="email" defaultValue={s.email ?? ""} className={inputClass} /></Field>
-            <Field label="Nama kepala sekolah" htmlFor="principal_name"><input id="principal_name" name="principal_name" defaultValue={s.principal_name ?? ""} className={inputClass} /></Field>
+      <form action={saveSettings} encType="multipart/form-data" className="space-y-6">
+        <Card title="Kop surat">
+          <LetterheadEditor defaults={{
+            parent: s.letterhead_parent ?? "", name: s.name ?? "", address: s.address ?? "", phone: s.phone ?? "", email: s.email ?? "", note: s.letterhead_note ?? "",
+            rule: (s.letterhead_rule ?? "THICK") as "THICK" | "DOUBLE" | "NONE", city: s.letter_city ?? "",
+            logoSrc: s.logo_data && s.logo_mime ? `data:${s.logo_mime};base64,${s.logo_data}` : null,
+          }} />
+        </Card>
+        <Card title="Data sekolah dan pejabat">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="NPSN" htmlFor="npsn" optional><input id="npsn" name="npsn" defaultValue={s.npsn ?? ""} className={inputClass} /></Field>
+            <Field label="Nama kepala sekolah" htmlFor="principal_name" hint="Dicetak di bawah tanda tangan."><input id="principal_name" name="principal_name" defaultValue={s.principal_name ?? ""} className={inputClass} /></Field>
             <Field label="NIP kepala sekolah" htmlFor="principal_nip"><input id="principal_nip" name="principal_nip" defaultValue={s.principal_nip ?? ""} className={inputClass} /></Field>
-            <div className="sm:col-span-2"><Field label="Catatan kop surat" htmlFor="letterhead_note"><input id="letterhead_note" name="letterhead_note" defaultValue={s.letterhead_note ?? ""} className={inputClass} /></Field></div>
           </div>
         </Card>
         <Card title="Penomoran surat keluar">

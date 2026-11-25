@@ -12,7 +12,7 @@ export const metadata = { title: "Buat surat keluar" };
 export default async function Page({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const sess = await requirePermission("letters.outgoing.create");
   const sb = createClient();
-  const [cats, { data: tpl }, { data: school }] = await Promise.all([getCategories(sb, "outgoing"), sb.from("letter_templates").select("id, name, body").eq("is_active", true).order("name"), sb.from("school_settings").select("name, principal_name, principal_nip").eq("id", 1).maybeSingle()]);
+  const [cats, { data: tpl }, { data: school }] = await Promise.all([getCategories(sb, "outgoing"), sb.from("letter_templates").select("id, name, body, letter_type").eq("is_active", true).order("name"), sb.from("school_settings").select("name, principal_name, principal_nip").eq("id", 1).maybeSingle()]);
   return (
     <>
       <PageHeader title="Buat surat keluar" description="Isi data berikut. Kolom bertanda * wajib diisi." crumbs={[{ label: "Surat keluar", href: "/surat-keluar" }, { label: "Buat baru" }]} />

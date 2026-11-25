@@ -14,8 +14,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!["FINAL", "DIKIRIM", "DIARSIPKAN"].includes(l.status) || !l.number) return new NextResponse("PDF hanya tersedia untuk surat final", { status: 409 });
   const { data: v } = await sb.from("letter_versions").select("snapshot").eq("outgoing_letter_id", l.id).eq("version", l.version).maybeSingle();
   if (!v) return new NextResponse("Versi final tidak ditemukan", { status: 404 });
-  const { data: school } = await sb.from("school_settings").select("name, address, phone, email, principal_name, principal_nip, letterhead_note").eq("id", 1).maybeSingle();
-  const snap = v.snapshot as { number: string; recipient: string; subject: string; body: string; letter_date: string; nature: string; attachment_note: string | null };
+  const { data: school } = await sb.from("school_settings").select("name, address, phone, email, principal_name, principal_nip, letterhead_note, letterhead_parent, letterhead_rule, letter_city, logo_data, logo_mime").eq("id", 1).maybeSingle();
+  const snap = v.snapshot as { number: string; recipient: string; subject: string; body: string; letter_date: string; nature: string; attachment_note: string | null; letter_type?: string | null };
   const bytes = await buildLetterPdf(snap, school ?? {}, formatDate(snap.letter_date));
   return new NextResponse(Buffer.from(bytes), {
     headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${safeFileName("surat-" + l.number.replace(/\//g, "-"))}.pdf"`, "Cache-Control": "private, no-store" },
