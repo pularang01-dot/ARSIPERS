@@ -19,11 +19,11 @@ export async function GET(req: NextRequest) {
 
   let lines: string[];
   if (jenis === "masuk") {
-    const { data } = await sb.from("incoming_letters").select("external_number, letter_date, received_date, sender, origin_org, subject, nature, status").gte("received_date", from).lte("received_date", to).order("received_date").limit(MAX_ROWS);
+    const { data } = await sb.from("incoming_letters").select("external_number, letter_date, received_date, sender, origin_org, subject, nature, status").eq("is_test", false).gte("received_date", from).lte("received_date", to).order("received_date").limit(MAX_ROWS);
     lines = [["Nomor surat", "Tanggal surat", "Tanggal diterima", "Pengirim", "Instansi", "Perihal", "Sifat", "Status"].map(csvCell).join(",")]
       .concat((data ?? []).map((r: any) => [r.external_number, r.letter_date, r.received_date, r.sender, r.origin_org, r.subject, r.nature, r.status].map(csvCell).join(",")));
   } else {
-    const { data } = await sb.from("outgoing_letters").select("number, letter_date, recipient, subject, nature, status, version").gte("letter_date", from).lte("letter_date", to).order("letter_date").limit(MAX_ROWS);
+    const { data } = await sb.from("outgoing_letters").select("number, letter_date, recipient, subject, nature, status, version").eq("is_test", false).gte("letter_date", from).lte("letter_date", to).order("letter_date").limit(MAX_ROWS);
     lines = [["Nomor surat", "Tanggal surat", "Tujuan", "Perihal", "Sifat", "Status", "Versi"].map(csvCell).join(",")]
       .concat((data ?? []).map((r: any) => [r.number, r.letter_date, r.recipient, r.subject, r.nature, r.status, r.version].map(csvCell).join(",")));
   }

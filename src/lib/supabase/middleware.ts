@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-const PUBLIC_PATHS = ["/login", "/offline", "/lupa-password", "/atur-password", "/auth"];
+const PUBLIC_PATHS = ["/login", "/offline", "/lupa-password", "/atur-password", "/auth", "/verifikasi"];
 
 /** Cookie sesi yang token penyegarnya tidak dikenal lagi (akun dihapus, sesi dicabut, atau ganti proyek). */
 function isStaleSession(e: unknown): boolean {

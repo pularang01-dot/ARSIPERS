@@ -34,7 +34,7 @@ export const AUDIT_LABEL: Record<string, string> = {
   OUTGOING_SUBMIT: "Surat keluar diajukan", OUTGOING_REVIEW: "Surat keluar ditinjau", OUTGOING_REQUEST_REVISION: "Revisi surat diminta",
   OUTGOING_APPROVE: "Surat keluar disetujui", OUTGOING_FINALIZE: "Surat difinalkan", NUMBER_ALLOCATE: "Nomor surat diterbitkan",
   OUTGOING_SEND: "Surat keluar dikirim", OUTGOING_NEW_VERSION: "Versi baru surat dibuat",
-  DISPOSITION_CREATE: "Disposisi dibuat", DISPOSITION_STATUS: "Disposisi diperbarui", ARCHIVE: "Surat diarsipkan", UNARCHIVE: "Pengarsipan dibatalkan", ARCHIVE_DELETE: "Arsip dihapus", LETTER_DELETE: "Surat dihapus",
+  DISPOSITION_CREATE: "Disposisi dibuat", DISPOSITION_STATUS: "Disposisi diperbarui", ARCHIVE: "Surat diarsipkan", UNARCHIVE: "Pengarsipan dibatalkan", ARCHIVE_DELETE: "Arsip dihapus", SIGNATORY_CREATE: "Penandatangan didaftarkan", SIGNATURE_IMAGE_ADD: "Gambar tanda tangan diganti", SIGNATORY_END: "Masa jabatan penandatangan diakhiri", SIGNATORY_REVOKE: "Penandatangan dicabut", SIGNATURE_APPLY: "Tanda tangan digital dibubuhkan", SIGNATURE_WITHDRAW: "Tanda tangan digital ditarik", TEST_DATA_PURGE: "Data uji coba dihapus", LETTER_DELETE: "Surat dihapus",
   USER_UPDATE: "Pengguna diperbarui", USER_DELETE: "Pengguna dihapus", USER_INVITE_RESEND: "Undangan dikirim ulang",
   SCHOOL_SETTINGS_UPDATE: "Pengaturan sekolah diubah", LETTER_TEMPLATE_CREATE: "Template dibuat", LETTER_TEMPLATE_UPDATE: "Template diubah",
   LETTER_CATEGORY_CREATE: "Kategori ditambahkan", LETTER_CATEGORY_UPDATE: "Kategori diubah", ATTACHMENT_CREATE: "Lampiran diunggah",

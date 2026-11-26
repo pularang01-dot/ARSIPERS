@@ -12,6 +12,7 @@ export function friendlyError(err: { message?: string; code?: string } | null | 
   if (!err) return "Terjadi kesalahan";
   if (err.code === "42501") return "Anda tidak memiliki izin untuk tindakan ini";
   if (err.code === "23505") return "Data duplikat ditemukan";
+  if (err.code === "23P01") return "Masa berlaku bertumpang tindih dengan penandatangan aktif lain. Akhiri masa jabatan yang lama terlebih dahulu.";
   if (err.code === "P0001" && err.message) return err.message;
   if (err.message && /^(Surat|Format|Alasan|Hanya|Pembuat|Perubahan|Anda|Isi|Pilih|Instruksi|Catatan|Metode|Penerima|Role|Pengguna|Disposisi|Akses|Aksi|Jenis|Revisi)/.test(err.message)) return err.message;
   return "Terjadi kesalahan pada server. Coba lagi atau hubungi administrator.";

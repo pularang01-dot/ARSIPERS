@@ -1,5 +1,6 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { kopLines, parseBody, spaceOut, titleForType, type RuleStyle } from "@/lib/letterhead";
+import { formatCode, signerTitle } from "@/lib/signature";
 
 export type PdfLetter = { number: string; recipient: string; subject: string; body: string; letter_date: string; nature: string; attachment_note?: string | null; letter_type?: string | null };
 export type PdfSchool = {
@@ -35,7 +36,13 @@ export function wrapText(text: string, font: PDFFont, size: number, maxWidth: nu
   return out;
 }
 
-export async function buildLetterPdf(letter: PdfLetter, school: PdfSchool, dateLabel: string): Promise<Uint8Array> {
+export type PdfSignature = {
+  signer_name: string; signer_nip?: string | null; signer_position?: string | null; image_data?: string | null; image_mime?: string | null;
+  signed_at_label?: string; code?: string; state: "VALID" | "WITHDRAWN";
+};
+export type PdfOptions = { signature?: PdfSignature | null; watermark?: string | null; verifyUrl?: string | null };
+
+export async function buildLetterPdf(letter: PdfLetter, school: PdfSchool, dateLabel: string, opts: PdfOptions = {}): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const reg = await pdf.embedFont(StandardFonts.TimesRoman);
   const bold = await pdf.embedFont(StandardFonts.TimesRomanBold);
@@ -141,12 +148,48 @@ export async function buildLetterPdf(letter: PdfLetter, school: PdfSchool, dateL
   }
 
   // ---------- Tanda tangan ----------
-  y -= 18; ensure(120);
+  y -= 18; ensure(150);
   const sx = W - MX - 200;
+  const sig = opts.signature ?? null;
+  const valid = sig?.state === "VALID";
   if (title) { draw(`${city}, ${dateLabel}`, sx, reg, SIZE); y -= LEAD; }
-  draw(school.name ? `Kepala ${school.name}` : "Kepala Sekolah", sx, reg, SIZE); y -= LEAD;
-  y -= 52; // ruang tanda tangan dan stempel manual
-  if (school.principal_name) { draw(school.principal_name, sx, reg, SIZE); y -= LEAD; }
-  if (school.principal_nip) { draw(`NIP ${school.principal_nip}`, sx, reg, 11); y -= LEAD; }
+  const titleLine = valid && sig?.signer_position ? signerTitle(sig.signer_position, school.name) : school.name ? `Kepala ${school.name}` : "Kepala Sekolah";
+  draw(titleLine, sx, reg, SIZE); y -= LEAD;
+  const sigTop = y;
+  if (valid && sig?.image_data && sig.image_mime) {
+    try {
+      const bytes = Uint8Array.from(Buffer.from(sig.image_data, "base64"));
+      const img = sig.image_mime === "image/png" ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+      const maxW = 150, maxH = 62, sc = Math.min(maxW / img.width, maxH / img.height);
+      page.drawImage(img, { x: sx, y: sigTop - 4 - img.height * sc, width: img.width * sc, height: img.height * sc });
+    } catch { /* gambar rusak: biarkan ruang kosong */ }
+  }
+  y -= 66; // ruang tanda tangan
+  const name = valid ? sig?.signer_name : school.principal_name;
+  const nip = valid ? sig?.signer_nip : school.principal_nip;
+  if (name) { draw(name, sx, reg, SIZE); y -= LEAD; }
+  if (nip) { draw(`NIP ${nip}`, sx, reg, 11); y -= LEAD; }
+  if (sig) {
+    const small = (t: string, c = rgb(0.35, 0.38, 0.45)) => {
+      for (const ln of wrapText(t, sans, 7.5, W - MX - sx)) { ensure(11); page.drawText(ln, { x: sx, y: y - 7.5, size: 7.5, font: sans, color: c }); y -= 10; }
+    };
+    if (valid) {
+      small("Ditandatangani secara elektronik" + (sig.signed_at_label ? ` - ${sig.signed_at_label}` : ""));
+      if (sig.code) small(`Kode verifikasi: ${formatCode(sig.code)}` + (opts.verifyUrl ? ` - ${opts.verifyUrl}` : ""));
+    } else {
+      small("Tanda tangan elektronik pada surat ini telah ditarik dan tidak berlaku.", rgb(0.6, 0.1, 0.1));
+    }
+  }
+
+  // ---------- Watermark (mode uji coba) ----------
+  if (opts.watermark) {
+    const wf = sansBold, ws = 92, text = toWinAnsi(opts.watermark);
+    const tw = wf.widthOfTextAtSize(text, ws);
+    for (const pg of pdf.getPages()) {
+      const { width, height } = pg.getSize();
+      // titik awal dihitung agar teks berotasi 45 derajat tepat di tengah halaman
+      pg.drawText(text, { x: width / 2 - (tw / 2) * Math.SQRT1_2 + 14, y: height / 2 - (tw / 2) * Math.SQRT1_2 - ws * 0.18 + 12, size: ws, font: wf, color: rgb(0.78, 0.15, 0.15), opacity: 0.16, rotate: degrees(45) });
+    }
+  }
   return pdf.save();
 }

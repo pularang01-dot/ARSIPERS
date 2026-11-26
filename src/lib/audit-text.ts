@@ -13,9 +13,10 @@ export const CATEGORIES: { value: string; label: string; actions: string[] }[] =
   { value: "surat-keluar", label: "Surat keluar", actions: ["OUTGOING_LETTER_CREATE", "OUTGOING_LETTER_UPDATE", "OUTGOING_SUBMIT", "OUTGOING_REVIEW", "OUTGOING_REQUEST_REVISION", "OUTGOING_APPROVE", "OUTGOING_FINALIZE", "NUMBER_ALLOCATE", "OUTGOING_SEND", "OUTGOING_NEW_VERSION"] },
   { value: "disposisi", label: "Disposisi", actions: ["DISPOSITION_CREATE", "DISPOSITION_STATUS"] },
   { value: "arsip", label: "Arsip dan penghapusan", actions: ["ARCHIVE", "UNARCHIVE", "ARCHIVE_DELETE", "LETTER_DELETE"] },
+  { value: "tanda-tangan", label: "Tanda tangan", actions: ["SIGNATORY_CREATE", "SIGNATURE_IMAGE_ADD", "SIGNATORY_END", "SIGNATORY_REVOKE", "SIGNATURE_APPLY", "SIGNATURE_WITHDRAW"] },
   { value: "berkas", label: "Lampiran", actions: ["ATTACHMENT_CREATE", "FILE_DOWNLOAD"] },
   { value: "pengguna", label: "Pengguna", actions: ["USER_UPDATE", "USER_DELETE", "USER_INVITE_RESEND"] },
-  { value: "pengaturan", label: "Pengaturan", actions: ["SCHOOL_SETTINGS_UPDATE", "LETTER_TEMPLATE_CREATE", "LETTER_TEMPLATE_UPDATE", "LETTER_CATEGORY_CREATE", "LETTER_CATEGORY_UPDATE"] },
+  { value: "pengaturan", label: "Pengaturan", actions: ["SCHOOL_SETTINGS_UPDATE", "TEST_DATA_PURGE", "LETTER_TEMPLATE_CREATE", "LETTER_TEMPLATE_UPDATE", "LETTER_CATEGORY_CREATE", "LETTER_CATEGORY_UPDATE"] },
   { value: "login", label: "Masuk dan keluar", actions: ["AUTH_LOGIN", "AUTH_LOGIN_GOOGLE", "AUTH_LOGOUT"] },
 ];
 
@@ -29,7 +30,7 @@ const COLUMN_LABEL: Record<string, string> = {
   needs_disposition: "penanda perlu disposisi", is_confidential: "status rahasia", recipient: "tujuan surat", body: "isi surat", letter_type: "jenis surat",
   attachment_note: "keterangan lampiran", template_id: "template", name: "nama", npsn: "NPSN", address: "alamat", phone: "nomor telepon", email: "email",
   principal_name: "nama kepala sekolah", principal_nip: "NIP kepala sekolah", letterhead_note: "catatan kop surat", number_format: "format nomor surat",
-  number_seq_pad: "lebar nomor urut", number_reset: "aturan reset nomor", timezone: "zona waktu", code: "kode", is_active: "status aktif",
+  number_seq_pad: "lebar nomor urut", number_reset: "aturan reset nomor", test_mode: "mode uji coba", letterhead_parent: "instansi induk pada kop", letterhead_rule: "garis kop surat", letter_city: "kota penulisan surat", logo_data: "logo sekolah", logo_mime: "logo sekolah", timezone: "zona waktu", code: "kode", is_active: "status aktif",
 };
 
 export function listText(items: string[]): string {
@@ -104,6 +105,14 @@ export function describeAudit(action: string, meta: Meta, e: AuditEntity): Audit
     case "LETTER_TEMPLATE_UPDATE": return { verb: "mengubah template surat" };
     case "LETTER_CATEGORY_CREATE": return { verb: "menambahkan kategori surat" };
     case "LETTER_CATEGORY_UPDATE": return { verb: "mengubah kategori surat" };
+    // Tanda tangan digital
+    case "SIGNATORY_CREATE": return { verb: "mendaftarkan penandatangan baru", object: meta.name ? { text: String(meta.name) } : undefined, extra: meta.valid_from ? `Berlaku mulai ${String(meta.valid_from)}.` : undefined };
+    case "SIGNATURE_IMAGE_ADD": return { verb: "mengganti gambar tanda tangan penandatangan", extra: meta.version ? `Sekarang versi ${String(meta.version)}.` : undefined };
+    case "SIGNATORY_END": return { verb: "mengakhiri masa jabatan penandatangan", extra: [meta.until ? `Berakhir ${String(meta.until)}.` : "", reason(meta) ?? ""].filter(Boolean).join(" ") || undefined };
+    case "SIGNATORY_REVOKE": return { verb: "mencabut penandatangan", extra: [reason(meta) ?? "", meta.withdrawn ? `${String(meta.withdrawn)} tanda tangan pada surat ikut ditarik.` : ""].filter(Boolean).join(" ") || undefined };
+    case "SIGNATURE_APPLY": return { verb: "membubuhkan tanda tangan digital pada surat keluar", object: obj, extra: meta.code ? `Kode verifikasi: ${String(meta.code)}.` : undefined };
+    case "SIGNATURE_WITHDRAW": return { verb: "menarik tanda tangan digital pada surat keluar", object: obj, extra: reason(meta) };
+    case "TEST_DATA_PURGE": return { verb: "menghapus semua data uji coba", extra: `${String(meta.incoming ?? 0)} surat masuk dan ${String(meta.outgoing ?? 0)} surat keluar.` };
     // Akun
     case "AUTH_LOGIN": return { verb: "masuk ke ARSIPERS" };
     case "AUTH_LOGIN_GOOGLE": return { verb: "masuk ke ARSIPERS dengan akun Google" };

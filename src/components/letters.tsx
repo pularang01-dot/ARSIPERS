@@ -173,3 +173,8 @@ export function ChipRadio({ name, options, defaultValue }: { name: string; optio
     </div>
   );
 }
+
+/** Penanda surat uji coba (dibuat saat mode uji coba aktif). */
+export function TestBadge({ className }: { className?: string }) {
+  return <span className={cn("inline-block -rotate-2 rounded-[3px] border-2 border-brass-dark px-1.5 py-px text-[10.5px] font-bold uppercase leading-tight tracking-[0.12em] text-brass-dark", className)}>Uji coba</span>;
+}

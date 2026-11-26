@@ -2,7 +2,7 @@ import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState, ErrorState, Flash, inputClass, LinkButton, PageHeader, Pagination, StatusBadge } from "@/components/ui";
-import { FilterBar, LetterRow, ListShell, StatusChips } from "@/components/letters";
+import { FilterBar, LetterRow, ListShell, StatusChips, TestBadge } from "@/components/letters";
 import { firstParam, formatDate, sanitizeSearch } from "@/lib/utils";
 import { INCOMING_STATUS, NATURES, PAGE_SIZE, STATUS_LABEL } from "@/lib/constants";
 import { CalendarDays, Lock, MailOpen } from "lucide-react";
@@ -30,7 +30,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
     return qb;
   };
   const [list, counts] = await Promise.all([
-    apply(sb.from("incoming_letters").select("id, external_number, sender, origin_org, subject, received_date, status, nature, is_confidential", { count: "exact" }), true)
+    apply(sb.from("incoming_letters").select("id, external_number, sender, origin_org, subject, received_date, status, nature, is_confidential, is_test", { count: "exact" }), true)
       .order("received_date", { ascending: false }).order("created_at", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
     apply(sb.from("incoming_letters").select("status").limit(5000), false),
   ]);
@@ -68,7 +68,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
               <LetterRow key={l.id} href={`/surat-masuk/${l.id}`} icon={l.is_confidential ? Lock : MailOpen} tone={l.is_confidential ? "bad" : "default"}
                 title={l.subject} subtitle={`${l.sender}${l.origin_org ? " - " + l.origin_org : ""}`}
                 meta={<><span className="inline-flex items-center gap-1 tabular-nums"><CalendarDays className="h-3.5 w-3.5" aria-hidden />Diterima {formatDate(l.received_date)}</span>{l.external_number && <span className="tabular-nums">No. {l.external_number}</span>}</>}
-                right={<><StatusBadge value={l.status} />{l.nature !== "BIASA" && <StatusBadge value={l.nature} />}</>} />
+                right={<><StatusBadge value={l.status} />{l.nature !== "BIASA" && <StatusBadge value={l.nature} />}{l.is_test && <TestBadge />}</>} />
             ))}
           </ListShell>
           <Pagination page={page} total={list.count ?? 0} pageSize={PAGE_SIZE} basePath="/surat-masuk" params={params} />

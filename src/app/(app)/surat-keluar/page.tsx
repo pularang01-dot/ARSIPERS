@@ -2,7 +2,7 @@ import { requirePermission } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { EmptyState, ErrorState, Flash, LinkButton, PageHeader, Pagination, StatusBadge } from "@/components/ui";
-import { FilterBar, LetterRow, ListShell, StatusChips } from "@/components/letters";
+import { FilterBar, LetterRow, ListShell, StatusChips, TestBadge } from "@/components/letters";
 import { firstParam, formatDate, sanitizeSearch } from "@/lib/utils";
 import { OUTGOING_STATUS, PAGE_SIZE, STATUS_LABEL } from "@/lib/constants";
 import { CalendarDays, Hash, Lock, Send } from "lucide-react";
@@ -23,7 +23,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
     return qb;
   };
   const [list, counts] = await Promise.all([
-    apply(sb.from("outgoing_letters").select("id, number, recipient, subject, letter_date, status, is_confidential, version", { count: "exact" }), true)
+    apply(sb.from("outgoing_letters").select("id, number, recipient, subject, letter_date, status, is_confidential, version, is_test", { count: "exact" }), true)
       .order("created_at", { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
     apply(sb.from("outgoing_letters").select("status").limit(5000), false),
   ]);
@@ -55,7 +55,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
               <LetterRow key={l.id} href={`/surat-keluar/${l.id}`} icon={l.is_confidential ? Lock : Send} tone={l.is_confidential ? "bad" : "default"}
                 title={l.subject} subtitle={`Kepada ${l.recipient}`}
                 meta={<><span className="inline-flex items-center gap-1 tabular-nums"><Hash className="h-3.5 w-3.5" aria-hidden />{l.number ?? "Nomor belum diberikan"}</span><span className="inline-flex items-center gap-1 tabular-nums"><CalendarDays className="h-3.5 w-3.5" aria-hidden />{formatDate(l.letter_date)}</span>{l.version > 1 && <span>Versi {l.version}</span>}</>}
-                right={<StatusBadge value={l.status} />} />
+                right={<><StatusBadge value={l.status} />{l.is_test && <TestBadge />}</>} />
             ))}
           </ListShell>
           <Pagination page={page} total={list.count ?? 0} pageSize={PAGE_SIZE} basePath="/surat-keluar" params={params} />

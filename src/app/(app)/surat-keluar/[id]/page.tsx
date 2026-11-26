@@ -5,11 +5,13 @@ import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { getAttachments, getProfileMap } from "@/lib/data";
 import { Card, DefinitionList, Field, Flash, inputClass, LinkButton, StatusBadge, SubmitButton, Timeline } from "@/components/ui";
-import { FileCard, LetterHeader, ProgressTrack } from "@/components/letters";
+import { FileCard, LetterHeader, ProgressTrack, TestBadge } from "@/components/letters";
 import { FileInput } from "@/components/FileInput";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { OUTGOING_STEPS } from "@/lib/constants";
-import { firstParam, formatDate } from "@/lib/utils";
+import { firstParam, formatDate, formatDateTime, todayJakarta } from "@/lib/utils";
+import { formatCode } from "@/lib/signature";
+import { withdrawLetterSignature } from "@/features/signature-actions";
 import { OUTGOING_EDITABLE } from "@/lib/workflow";
 import { deleteArchived, unarchiveLetter } from "@/features/archive-actions";
 import { addOutgoingAttachment, archiveOutgoing, deleteOutgoing, finalizeOutgoing, recordDelivery, reviseOutgoing, transitionOutgoing } from "@/features/outgoing-actions";
@@ -41,6 +43,13 @@ export default async function Page({ params, searchParams }: { params: { id: str
     sb.from("letter_approvals").select("id, action, actor_id, note, from_status, to_status, created_at").eq("outgoing_letter_id", l.id).order("created_at", { ascending: false }),
     sb.from("letter_deliveries").select("id, method, note, delivered_at, recorded_by").eq("outgoing_letter_id", l.id).order("delivered_at", { ascending: false }),
   ]);
+  const today = todayJakarta();
+  const [{ data: sigRows }, { data: mySig }] = await Promise.all([
+    sb.rpc("get_letter_signature", { p_letter: l.id, p_include_image: false }),
+    sb.from("signatories").select("id").eq("profile_id", s.userId).eq("status", "ACTIVE").lte("valid_from", today).or(`valid_until.is.null,valid_until.gte.${today}`).limit(1),
+  ]);
+  const sig = ((sigRows ?? []) as Row[])[0] ?? null;
+  const canSign = ((mySig ?? []) as Row[]).length > 0;
   const hist = (appr.data ?? []) as Row[];
   const sent = (deliveries.data ?? []) as Row[];
   const names = await getProfileMap(sb, [l.created_by, l.reviewed_by, l.approved_by, l.number_allocated_by, ...hist.map((h) => h.actor_id), ...sent.map((d) => d.recorded_by)]);
@@ -72,7 +81,7 @@ export default async function Page({ params, searchParams }: { params: { id: str
       {lastRevisionNote && <div role="note" className="rounded-xl border border-brass/40 bg-brass-soft px-5 py-4 text-sm text-brass-dark"><strong>Catatan revisi:</strong> {lastRevisionNote}</div>}
 
       <LetterHeader eyebrow={`Surat keluar${l.number ? " - " + l.number : ""}`} title={l.subject}
-        badges={<><StatusBadge value={st} />{l.nature !== "BIASA" && <StatusBadge value={l.nature} />}{l.version > 1 && <StatusBadge tone="idle" value={`Versi ${l.version}`} />}</>}
+        badges={<><StatusBadge value={st} />{l.is_test && <TestBadge />}{l.nature !== "BIASA" && <StatusBadge value={l.nature} />}{l.version > 1 && <StatusBadge tone="idle" value={`Versi ${l.version}`} />}</>}
         meta={[{ icon: Hash, text: l.number ?? "Nomor belum diberikan" }, { icon: Send, text: `Kepada ${l.recipient}` }, { icon: CalendarDays, text: formatDate(l.letter_date) }, { icon: User, text: `Dibuat oleh ${names[l.created_by] ?? "-"}` }]}
         actions={<>{showPdf && <LinkButton href={`/api/outgoing/${l.id}/pdf`} variant="secondary"><Download className="h-4 w-4" aria-hidden />Unduh PDF</LinkButton>}{canEdit && <LinkButton href={`/surat-keluar/${l.id}/ubah`} variant="secondary">Ubah draft</LinkButton>}</>} />
 
@@ -98,6 +107,26 @@ export default async function Page({ params, searchParams }: { params: { id: str
               { label: "Ditinjau oleh", value: names[l.reviewed_by ?? ""] }, { label: "Disetujui oleh", value: l.approved_by ? `${names[l.approved_by]} (${formatDate(l.approved_at)})` : null },
               { label: "Nomor diterbitkan oleh", value: names[l.number_allocated_by ?? ""] }, { label: "Keterangan lampiran", value: l.attachment_note },
             ]} />
+          </Card>
+
+          <Card title="Tanda tangan digital">
+            {sig && sig.state === "VALID" ? (
+              <div className="space-y-3 text-sm">
+                <p className="text-ink">Ditandatangani secara elektronik oleh <strong>{sig.signer_name as string}</strong>, {sig.signer_position as string}, pada {formatDateTime(sig.signed_at as string)}.</p>
+                <p className="rounded-md bg-surface px-3 py-2 text-xs text-ink-soft">Kode verifikasi: <strong className="font-mono text-ink">{formatCode(sig.code as string)}</strong> - dapat diperiksa siapa saja di halaman /verifikasi.</p>
+                {(p("signatures.manage") || p("letters.outgoing.approve")) && (
+                  <form action={withdrawLetterSignature}><input type="hidden" name="id" value={l.id} />
+                    <ConfirmButton label="Tarik tanda tangan" title="Tarik tanda tangan digital?" confirmLabel="Tarik tanda tangan"
+                      message="Tanda tangan pada surat ini tidak berlaku lagi dan PDF berikutnya tidak memuatnya. Gunakan bila tanda tangan salah bubuh. Tercatat di riwayat aktivitas.">
+                      <Field label="Alasan penarikan" htmlFor="wd-reason" required><input id="wd-reason" name="reason" required minLength={5} className={inputClass} /></Field>
+                    </ConfirmButton></form>
+                )}
+              </div>
+            ) : sig ? (
+              <p className="rounded-md bg-bad-bg px-3 py-2 text-sm text-bad">Tanda tangan digital pada surat ini <strong>telah ditarik</strong> dan tidak berlaku.</p>
+            ) : (
+              <p className="text-sm text-ink-soft">{["DISETUJUI", "FINAL", "DIKIRIM", "DIARSIPKAN"].includes(st) ? "Surat ini belum ditandatangani secara digital. PDF memakai ruang tanda tangan basah." : "Tanda tangan digital dibubuhkan oleh pejabat saat ia menyetujui surat."}</p>
+            )}
           </Card>
 
           <Card title={`Lampiran (${files.length})`}>
@@ -127,7 +156,11 @@ export default async function Page({ params, searchParams }: { params: { id: str
               {canReview && <form action={transitionOutgoing}><input type="hidden" name="id" value={l.id} /><input type="hidden" name="action" value="REVIEW" /><SubmitButton className="w-full">Mulai tinjau</SubmitButton></form>}
               {canApprove && (
                 <form action={transitionOutgoing}><input type="hidden" name="id" value={l.id} /><input type="hidden" name="action" value="APPROVE" />
-                  <ConfirmButton variant="primary" label="Setujui surat" title="Setujui surat ini?" message="Persetujuan tercatat atas nama Anda. Nomor surat diberikan saat finalisasi." confirmLabel="Setujui">{noteField("n2", "Catatan (opsional)")}</ConfirmButton></form>
+                  <ConfirmButton variant="primary" label="Setujui surat" title="Setujui surat ini?" message="Persetujuan tercatat atas nama Anda. Nomor surat diberikan saat finalisasi." confirmLabel="Setujui">{noteField("n2", "Catatan (opsional)")}
+                    {canSign ? (
+                      <label className="flex items-start gap-2.5 rounded-lg border border-brass/40 bg-brass-soft p-3 text-sm"><input type="checkbox" name="sign" defaultChecked className="mt-0.5 h-4 w-4" /><span><strong>Bubuhkan tanda tangan digital saya</strong> pada surat ini. Isi surat dikunci dengan kode verifikasi, dan tanda tangan baru dapat ditarik oleh Anda atau admin.</span></label>
+                    ) : <p className="text-xs text-ink-mute">Akun Anda belum terdaftar sebagai penandatangan, jadi surat disetujui tanpa tanda tangan digital (tanda tangan basah pada hasil cetak).</p>}
+                  </ConfirmButton></form>
               )}
               {canRequestRevision && (
                 <form action={transitionOutgoing}><input type="hidden" name="id" value={l.id} /><input type="hidden" name="action" value="REQUEST_REVISION" />

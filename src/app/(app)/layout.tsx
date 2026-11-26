@@ -12,6 +12,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const s = await requireSession();
   const supabase = createClient();
   const { count: unread } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", s.userId).is("read_at", null);
+  const { data: cfg } = await supabase.from("school_settings").select("test_mode").eq("id", 1).maybeSingle();
+  const testMode = !!cfg?.test_mode;
   const p = (x: Parameters<typeof can>[1]) => can(s.permissions, x);
 
   const items: NavItem[] = [{ href: "/", label: "Dashboard", icon: "dashboard", group: "Utama" }];
@@ -33,6 +35,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <a href="#konten" className="sr-only z-50 rounded-md bg-white px-3 py-2 text-sm focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Lewati ke konten</a>
       <Sidebar items={items} user={{ name: s.fullName, role: ROLE_LABEL[s.roleCode as RoleCode] ?? s.roleCode }} signOut={signOut} />
       <div className="flex min-w-0 flex-1 flex-col">
+        {testMode && (
+          <div role="status" className="bg-brass px-4 py-2 text-center text-sm font-medium text-white">
+            MODE UJI COBA aktif: surat yang dibuat sekarang hanya contoh, memakai nomor &ldquo;UJI-&rdquo;, dan tidak resmi.
+            {p("settings.manage") && <> <Link href="/pengaturan#uji-coba" className="underline underline-offset-2">Kelola</Link></>}
+          </div>
+        )}
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-line bg-white/70 pl-16 pr-4 backdrop-blur-md lg:px-8">
           <form action="/surat-masuk" className="relative hidden max-w-md flex-1 sm:block" role="search">
             <label htmlFor="global-q" className="sr-only">Cari surat masuk</label>

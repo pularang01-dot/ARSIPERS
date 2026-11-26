@@ -5,7 +5,7 @@ import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { getAssignableUsers, getAttachments, getAuditTrail, getProfileMap } from "@/lib/data";
 import { buttonClass, Card, DefinitionList, Field, Flash, inputClass, LinkButton, StatusBadge, SubmitButton, Timeline } from "@/components/ui";
-import { Avatar, FileCard, LetterHeader, ProgressTrack } from "@/components/letters";
+import { Avatar, FileCard, LetterHeader, ProgressTrack, TestBadge } from "@/components/letters";
 import { FileInput } from "@/components/FileInput";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { INCOMING_STEPS, PRIORITIES, STATUS_LABEL } from "@/lib/constants";
@@ -64,7 +64,7 @@ export default async function Page({ params, searchParams }: { params: { id: str
       <Flash ok={firstParam(searchParams.ok)} error={firstParam(searchParams.error)} />
 
       <LetterHeader eyebrow="Surat masuk" title={l.subject}
-        badges={<><StatusBadge value={l.status} />{l.nature !== "BIASA" && <StatusBadge value={l.nature} />}{l.needs_disposition && <StatusBadge value="PENTING" tone="warn" />}</>}
+        badges={<><StatusBadge value={l.status} />{l.is_test && <TestBadge />}{l.nature !== "BIASA" && <StatusBadge value={l.nature} />}{l.needs_disposition && <StatusBadge value="PENTING" tone="warn" />}</>}
         meta={[{ icon: Hash, text: l.external_number || "Tanpa nomor" }, { icon: Building2, text: l.sender }, { icon: CalendarDays, text: `Diterima ${formatDate(l.received_date)}` }]}
         actions={p("letters.incoming.update") && editable ? <LinkButton href={`/surat-masuk/${l.id}/ubah`} variant="secondary">Ubah data</LinkButton> : undefined} />
 

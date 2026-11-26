@@ -2,7 +2,8 @@ import { requirePermission } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, Field, Flash, inputClass, PageHeader, StatusBadge, SubmitButton, LinkButton } from "@/components/ui";
 import { firstParam } from "@/lib/utils";
-import { addCategory, saveSettings, toggleCategory } from "@/features/admin-actions";
+import { addCategory, purgeTestData, saveSettings, setTestMode, toggleCategory } from "@/features/admin-actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { previewNumber } from "@/lib/numbering";
 import { NumberFormatField } from "@/components/NumberFormatField";
 import { LetterheadEditor } from "@/components/LetterheadEditor";
@@ -18,6 +19,12 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
     sb.from("letter_templates").select("id, name, letter_type, body, version, is_active").order("name"),
   ]);
   const s = st ?? {};
+  const [{ count: testIn }, { count: testOut }, { count: sigCount }] = await Promise.all([
+    sb.from("incoming_letters").select("id", { count: "exact", head: true }).eq("is_test", true),
+    sb.from("outgoing_letters").select("id", { count: "exact", head: true }).eq("is_test", true),
+    sb.from("signatories").select("id", { count: "exact", head: true }).eq("status", "ACTIVE"),
+  ]);
+  const testTotal = (testIn ?? 0) + (testOut ?? 0);
   const preview = s.number_format ? previewNumber(s.number_format, 1, s.number_seq_pad ?? 3, new Date(), "UMUM") : null;
   return (
     <>
@@ -66,6 +73,36 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
       <Card title="Template surat" className="mt-6" action={<LinkButton href="/pengaturan/template" variant="secondary">Kelola template</LinkButton>}>
         <p className="text-sm leading-relaxed text-ink-soft">Template adalah kerangka isi surat yang bisa dipilih saat membuat surat keluar, sehingga tujuan, perihal, dan nama sekolah terisi otomatis. {(tpls ?? []).length ? `Saat ini ada ${(tpls ?? []).length} template.` : "Belum ada template."}</p>
       </Card>
+
+      <Card title="Tanda tangan digital" className="mt-6" action={<LinkButton href="/pengaturan/penandatangan" variant="secondary">Kelola penandatangan</LinkButton>}>
+        <p className="text-sm leading-relaxed text-ink-soft">Atur pejabat yang berhak menandatangani surat secara digital, lengkap dengan masa jabatannya. Saat jabatan berganti, tanda tangan lama diakhiri dan tidak dapat dipakai lagi tanpa mengubah keabsahan surat yang sudah terbit. {sigCount ? `Penandatangan aktif saat ini: ${sigCount}.` : "Belum ada penandatangan aktif."}</p>
+      </Card>
+
+      <div id="uji-coba" className="scroll-mt-24">
+        <Card title="Mode uji coba" className="mt-6">
+          <p className="text-sm leading-relaxed text-ink-soft">Gunakan untuk berlatih atau mengenalkan aplikasi kepada staf tanpa mengganggu data resmi. Selama mode ini aktif, surat yang dibuat <strong className="text-ink">ditandai &ldquo;Uji coba&rdquo;</strong>, memakai nomor terpisah berawalan <strong className="font-mono text-ink">UJI-</strong> (nomor resmi tidak terpakai), PDF-nya diberi watermark, tidak ikut laporan, dan dapat dihapus sekaligus.</p>
+          <form action={setTestMode} className="mt-4 flex flex-wrap items-center gap-4">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input type="checkbox" name="enabled" defaultChecked={!!s.test_mode} className="peer sr-only" />
+              <span className="relative h-7 w-12 rounded-full bg-line-strong transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-6 after:w-6 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:bg-brass peer-checked:after:translate-x-5 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-navy-600" aria-hidden />
+              <span className="text-sm font-medium text-ink">Mode uji coba aktif</span>
+            </label>
+            <SubmitButton variant="secondary">Simpan pilihan</SubmitButton>
+          </form>
+          <p className="mt-3 text-xs text-ink-mute">Surat yang sudah ada tidak berubah. Hanya surat yang dibuat setelah mode diaktifkan yang ditandai.</p>
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="text-sm text-ink-soft">Data uji coba tersimpan: <strong className="text-ink">{testIn ?? 0}</strong> surat masuk dan <strong className="text-ink">{testOut ?? 0}</strong> surat keluar.</p>
+            {testTotal > 0 && (
+              <form action={purgeTestData} className="mt-3">
+                <ConfirmButton label="Hapus semua data uji coba" title="Hapus semua data uji coba?" confirmLabel="Hapus data uji coba"
+                  message="Semua surat bertanda Uji coba disembunyikan dari seluruh daftar. Surat resmi dan nomor resmi tidak terpengaruh. Tindakan ini tercatat di riwayat aktivitas.">
+                  <Field label="Ketik HAPUS untuk konfirmasi" htmlFor="purge-c"><input id="purge-c" name="confirm" autoComplete="off" className={inputClass} /></Field>
+                </ConfirmButton>
+              </form>
+            )}
+          </div>
+        </Card>
+      </div>
     </>
   );
 }

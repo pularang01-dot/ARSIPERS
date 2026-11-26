@@ -193,3 +193,24 @@ export async function deleteUser(formData: FormData) {
   revalidatePath("/pengguna");
   go("/pengguna", "ok", `Akun ${prof!.full_name || u?.user?.email || "pengguna"} dihapus permanen.`);
 }
+
+/** Aktifkan/nonaktifkan mode uji coba. Surat yang sudah ada tidak berubah; hanya surat baru yang ditandai. */
+export async function setTestMode(formData: FormData) {
+  await requirePermission("settings.manage");
+  const on = formData.get("enabled") === "on";
+  const { error } = await createClient().from("school_settings").update({ test_mode: on }).eq("id", 1);
+  if (error) go("/pengaturan#pesan", "error", friendlyError(error));
+  revalidatePath("/", "layout");
+  go("/pengaturan#pesan", "ok", on ? "Mode uji coba AKTIF. Surat yang dibuat sekarang hanya contoh dan tidak memakai nomor resmi." : "Mode uji coba dimatikan. Surat baru kembali bersifat resmi.");
+}
+
+/** Hapus semua data uji coba (disembunyikan; nomor resmi tidak terpengaruh). */
+export async function purgeTestData(formData: FormData) {
+  await requirePermission("settings.manage");
+  if (String(formData.get("confirm") ?? "").trim() !== "HAPUS") go("/pengaturan#pesan", "error", "Dibatalkan: ketik HAPUS (huruf besar) untuk konfirmasi.");
+  const { data, error } = await createClient().rpc("purge_test_data");
+  if (error) go("/pengaturan#pesan", "error", friendlyError(error));
+  const r = (data ?? {}) as { incoming?: number; outgoing?: number };
+  revalidatePath("/", "layout");
+  go("/pengaturan#pesan", "ok", `Data uji coba dihapus: ${r.incoming ?? 0} surat masuk dan ${r.outgoing ?? 0} surat keluar.`);
+}

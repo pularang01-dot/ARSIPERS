@@ -55,7 +55,7 @@ export async function transitionOutgoing(formData: FormData) {
     const { data: l } = await createClient().from("outgoing_letters").select("body").eq("id", id).maybeSingle();
     if (l && hasUnfilled(l.body as string)) go(`/surat-keluar/${id}`, "error", "Masih ada bagian [isi ...] pada isi surat yang belum dilengkapi. Ubah draft terlebih dahulu sebelum mengajukan.");
   }
-  const { error } = await createClient().rpc("transition_outgoing", { p_id: id, p_action: action, p_note: str(formData, "note") || null });
+  const { error } = await createClient().rpc("transition_outgoing", { p_id: id, p_action: action, p_note: str(formData, "note") || null, p_sign: action === "APPROVE" && formData.get("sign") === "on" });
   if (error) go(`/surat-keluar/${id}`, "error", friendlyError(error));
   revalidatePath(`/surat-keluar/${id}`);
   go(`/surat-keluar/${id}`, "ok", ACTION_MSG[action]);

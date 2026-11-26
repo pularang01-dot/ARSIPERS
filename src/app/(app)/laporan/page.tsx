@@ -50,9 +50,9 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
   const { from, to } = custom ? { from: qf, to: qt } : presetRange(preset, today);
 
   const [incQ, outQ, dispQ] = await Promise.all([
-    sb.from("incoming_letters").select("status, received_date, sender").gte("received_date", from).lte("received_date", to).limit(10000),
-    sb.from("outgoing_letters").select("status, letter_date, recipient").gte("letter_date", from).lte("letter_date", to).limit(10000),
-    sb.from("letter_dispositions").select("status, due_date").gte("created_at", `${from}T00:00:00+07:00`).lte("created_at", `${to}T23:59:59+07:00`).limit(10000),
+    sb.from("incoming_letters").select("status, received_date, sender").eq("is_test", false).gte("received_date", from).lte("received_date", to).limit(10000),
+    sb.from("outgoing_letters").select("status, letter_date, recipient").eq("is_test", false).gte("letter_date", from).lte("letter_date", to).limit(10000),
+    sb.from("letter_dispositions").select("status, due_date, incoming:incoming_letters!inner(is_test)").eq("incoming.is_test", false).gte("created_at", `${from}T00:00:00+07:00`).lte("created_at", `${to}T23:59:59+07:00`).limit(10000),
   ]);
   const inc = (incQ.data ?? []) as Row[], out = (outQ.data ?? []) as Row[], disp = (dispQ.data ?? []) as Row[];
 
@@ -69,7 +69,7 @@ export default async function Page({ searchParams }: { searchParams: Record<stri
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Laporan" description="Rekap kegiatan persuratan per periode. Data mengikuti hak akses Anda." />
+      <PageHeader title="Laporan" description="Rekap kegiatan persuratan per periode. Data mengikuti hak akses Anda dan tidak menghitung surat uji coba." />
 
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border border-line bg-surface-card p-4 shadow-card">
         <div>
