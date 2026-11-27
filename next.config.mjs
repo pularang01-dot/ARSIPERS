@@ -9,7 +9,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
-  experimental: { serverActions: { bodySizeLimit: "10mb" } },
+  experimental: { serverActions: { bodySizeLimit: "10mb" }, optimizePackageImports: ["lucide-react"] },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

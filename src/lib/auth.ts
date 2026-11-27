@@ -23,15 +23,25 @@ export const getSession = cache(async (): Promise<Session | null> => {
     return null; // sesi rusak: perlakukan sebagai belum login
   }
   if (!user) return null;
-  const { data: profile } = await supabase.from("profiles").select("full_name, role_code, is_active").eq("id", user.id).maybeSingle();
+  // Satu permintaan: profil + daftar izin role (sebelumnya dua permintaan berurutan)
+  const { data: profile } = await supabase.from("profiles")
+    .select("full_name, role_code, is_active, role:roles(role_permissions(permission_code))")
+    .eq("id", user.id).maybeSingle();
   if (!profile || !profile.is_active) return null;
-  const { data: rp } = await supabase.from("role_permissions").select("permission_code").eq("role_code", profile.role_code);
+  const rel = (profile as Record<string, unknown>).role;
+  const relObj = (Array.isArray(rel) ? rel[0] : rel) as { role_permissions?: { permission_code: string }[] } | null | undefined;
+  let permissions = (relObj?.role_permissions ?? []).map((r) => r.permission_code);
+  if (!permissions.length) {
+    // cadangan bila relasi bersarang tidak terbaca
+    const { data: rp } = await supabase.from("role_permissions").select("permission_code").eq("role_code", profile.role_code);
+    permissions = (rp ?? []).map((r: { permission_code: string }) => r.permission_code);
+  }
   return {
     userId: user.id,
     email: user.email ?? "",
     fullName: profile.full_name || user.email || "Pengguna",
     roleCode: profile.role_code,
-    permissions: (rp ?? []).map((r: { permission_code: string }) => r.permission_code),
+    permissions,
   };
 });
 

@@ -32,26 +32,28 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  let user: { id: string } | null = null;
+  // Hanya untuk mengarahkan halaman: membaca cookie sesi secara lokal (tanpa panggilan jaringan ke Supabase).
+  // Keabsahan sesi yang sebenarnya diperiksa di server (getUser) pada layout, API, dan RLS di database.
+  let signedIn = false;
   let authError: unknown = null;
   try {
-    const r = await supabase.auth.getUser();
-    user = r.data.user;
+    const r = await supabase.auth.getSession();
+    signedIn = !!r.data.session;
     authError = r.error;
   } catch (e) {
     authError = e;
   }
 
   if (authError && isStaleSession(authError)) {
-    staleNames = request.cookies.getAll().map((c) => c.name).filter((n) => n.startsWith("sb-") && n.includes("auth-token"));
+    staleNames = request.cookies.getAll().map((c: { name: string }) => c.name).filter((n: string) => n.startsWith("sb-") && n.includes("auth-token"));
     staleNames.forEach((n) => request.cookies.delete(n));
     response = NextResponse.next({ request });
-    user = null;
+    signedIn = false;
   }
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
-  if (!user && !isPublic) {
+  if (!signedIn && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
@@ -59,7 +61,7 @@ export async function updateSession(request: NextRequest) {
     return clearStale(NextResponse.redirect(url));
   }
   // Jangan redirect bila ada ?error (mis. sesi valid tetapi profil tidak ada) agar tidak terjadi loop
-  if (user && path === "/login" && !request.nextUrl.searchParams.has("error")) {
+  if (signedIn && path === "/login" && !request.nextUrl.searchParams.has("error")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
